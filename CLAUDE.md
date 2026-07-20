@@ -12,11 +12,14 @@ Existing helpers:
 
 - `scripts/snap.mjs` — single debug screenshot of the app. Flags:
   `--out <path>` (required), `--profile <id>`, `--preset <name>`,
-  `--hash <token>`, `--caps <both|bottom>`, `--wall <mm>`, `--width`,
-  `--height`, `--wait <ms>`, `--full` (wait for the Web Worker full-res build).
-  Auto-starts the dev server, captures console/page errors, prints `#status`.
+  `--hash <token>`, `--caps <both|bottom>`, `--wall <mm>`,
+  `--set <id>=<value>` (repeatable — set any input/slider by element id, e.g.
+  `--set p_profileShape_belly=0.6`), `--width`, `--height`, `--wait <ms>`,
+  `--full` (wait for the Web Worker full-res build). Auto-starts the dev
+  server, captures console/page errors, prints `#status`.
 - `scripts/smoke.mjs` — headless smoke over every profile/card/preset + worker,
-  modulation, wall/open-top, share round-trip. `--preview` runs the prod build.
+  modulation, wall/open-top, profile-shape, share round-trip. `--preview` runs
+  the prod build.
 - `scripts/shot.mjs` — one screenshot per profile into `./shots`.
 
 When a new one-off check is needed more than once, add it to `snap.mjs`/`smoke.mjs`

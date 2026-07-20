@@ -12,6 +12,9 @@ displacements over a base surface and prints the result.
 
 - **Carriers**: solids of revolution (5 preset profiles + Fourier-series
   profile r(z)), sphere, torus, superellipsoid, Gielis supershape.
+- **Editable profile shape**: preset profiles have base/belly/neck sliders
+  to widen or narrow the base, body and neck; Fourier and abstract shapes
+  expose their own parameters.
 - **Displacement stack** (applied along surface normals): ripples,
   Lissajous interference, real spherical harmonics Yₗₘ, seeded simplex fBm
   noise, LFO waves (triangle/saw/square), gyroid pattern, bytebeat relief.
@@ -21,10 +24,13 @@ displacements over a base surface and prints the result.
   preview is static and deterministic; a phase slider replaces time.
 - **Live preview**: 96×96 grid rebuilds instantly on the main thread; the
   full-resolution mesh (up to 512×512) is built in a Web Worker with a
-  progress bar.
+  progress bar. A 2D silhouette graph shows the profile r(z).
 - **Print-ready export**: watertight, consistently oriented binary STL in
-  millimetres (welded seams, fan caps). Warnings for steep overhangs (>60°)
-  and possible self-intersections.
+  millimetres (welded seams, fan caps). Revolution vessels get a flat base
+  for bed adhesion. Two open-top modes: a zero-wall shell (slicer vase-mode)
+  or a real hollow vessel with an adjustable wall-thickness slider (mm),
+  giving a watertight solid. Warnings for steep overhangs (>60°) and
+  possible self-intersections.
 - Presets, shareable `#s=…` links (base64url state), user presets in
   localStorage.
 
@@ -33,7 +39,7 @@ displacements over a base surface and prints the result.
 ```bash
 npm install
 npm run dev       # Vite dev server
-npm run check     # tsc + eslint + vitest (174 tests)
+npm run check     # tsc + eslint + vitest (214 tests)
 npm run smoke     # headless-Chromium smoke: every profile/card/preset builds
                   # without console errors, STL export works
 npm run shot      # screenshots of every profile → ./shots
