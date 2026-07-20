@@ -2,15 +2,21 @@
 // деформеры → крышки → нормали. Чистая функция параметров — используется
 // главным потоком сейчас и Web Worker'ом в фазе 3.
 
-import type { CapMode, SurfaceMesh } from './surface';
-import { assembleMesh } from './surface';
-import { revolveGrid } from './shapes';
-import { profileById, profileRadius } from './profiles';
+import type { CapMode, SurfaceMesh, Grid } from './surface';
+import { assembleMesh, assembleTorusMesh } from './surface';
+import type { ShapeId } from './shapes';
+import { revolveGrid, shapeGrid, isShapeId, DEFAULT_SHAPE_PARAMS } from './shapes';
+import {
+  profileById, profileRadius,
+  FOURIER_PROFILE_ID, FOURIER_HEIGHT, DEFAULT_FOURIER_PARAMS, fourierRadius,
+} from './profiles';
 import { gridNormals, meshNormals } from './normals';
 import type { DisplaceEntry, DisplaceId, Params } from './displace';
-import { DISPLACE_IDS, DEFAULT_DISPLACE_PARAMS, applyDisplacements, makeDisplace } from './displace';
-import type { DeformId } from './deform';
+import { DISPLACE_IDS, DEFAULT_DISPLACE_PARAMS, applyDisplacements, makeDisplace, makeKernel } from './displace';
+import type { DeformId, ParamEval } from './deform';
 import { DEFORM_IDS, DEFAULT_DEFORM_PARAMS, applyDeformer } from './deform';
+import type { ModState, ModContext } from './mod';
+import { defaultModState, findModTarget, lfoValueAt, effectiveParam } from './mod';
 
 export interface CardState {
   on: boolean;
@@ -24,7 +30,14 @@ export interface BuildParams {
   caps: CapMode;
   displace: Record<DisplaceId, CardState>;
   deform: Record<DeformId, CardState>;
+  /** параметры Фурье-профиля (используются при profile === 'fourier') */
+  fourier: Params;
+  /** параметры фигур-носителей (используются при profile ∈ SHAPE_IDS) */
+  shapes: Record<ShapeId, Params>;
+  mod: ModState;
 }
+
+export type ProgressFn = (t: number, phase: string) => void;
 
 function card(params: Params, on = false): CardState {
   return { on, params: { ...params } };
@@ -43,36 +56,112 @@ export function defaultParams(): BuildParams {
       harmonics: card(DEFAULT_DISPLACE_PARAMS.harmonics),
       noise: card(DEFAULT_DISPLACE_PARAMS.noise),
       waves: card(DEFAULT_DISPLACE_PARAMS.waves),
+      gyroid: card(DEFAULT_DISPLACE_PARAMS.gyroid),
+      bytebeat: card(DEFAULT_DISPLACE_PARAMS.bytebeat),
     },
     deform: {
       twist: card(DEFAULT_DEFORM_PARAMS.twist),
       taper: card(DEFAULT_DEFORM_PARAMS.taper),
       symmetry: card(DEFAULT_DEFORM_PARAMS.symmetry),
+      smooth: card(DEFAULT_DEFORM_PARAMS.smooth),
+      quantize: card(DEFAULT_DEFORM_PARAMS.quantize),
     },
+    fourier: { ...DEFAULT_FOURIER_PARAMS },
+    shapes: {
+      sphere: { ...DEFAULT_SHAPE_PARAMS.sphere },
+      torus: { ...DEFAULT_SHAPE_PARAMS.torus },
+      superellipsoid: { ...DEFAULT_SHAPE_PARAMS.superellipsoid },
+      supershape: { ...DEFAULT_SHAPE_PARAMS.supershape },
+    },
+    mod: defaultModState(),
   };
 }
 
 export const DEFAULT_PARAMS: BuildParams = defaultParams();
 
-export function buildMesh(p: BuildParams): SurfaceMesh {
+/**
+ * Профиль и высота для текущих параметров; null для фигур-носителей без
+ * профиля r(z) (сфера, тор и т.п.) — график силуэта тогда не рисуется.
+ */
+export function radiusFnFor(p: BuildParams): { radiusFn: (t: number) => number; height: number } | null {
+  if (isShapeId(p.profile)) return null;
+  if (p.profile === FOURIER_PROFILE_ID) {
+    return { radiusFn: (t) => fourierRadius(p.fourier, t), height: FOURIER_HEIGHT };
+  }
   const def = profileById(p.profile);
-  const grid = revolveGrid((t) => profileRadius(def, t), {
-    nu: p.nu,
-    nv: p.nv,
-    height: def.height,
-  });
+  return { radiusFn: (t) => profileRadius(def, t), height: def.height };
+}
+
+/** Сетка-носитель + высота + способ сборки меша для текущих параметров. */
+function baseGrid(p: BuildParams): { grid: Grid; height: number; torus: boolean } {
+  if (isShapeId(p.profile)) {
+    const res = shapeGrid(p.profile, p.shapes[p.profile], p.nu, p.nv);
+    return { grid: res.grid, height: res.height, torus: p.profile === 'torus' };
+  }
+  const prof = radiusFnFor(p);
+  if (!prof) throw new Error(`no profile for ${p.profile}`);
+  return {
+    grid: revolveGrid(prof.radiusFn, { nu: p.nu, nv: p.nv, height: prof.height }),
+    height: prof.height,
+    torus: false,
+  };
+}
+
+/**
+ * Эффективные параметры карточки в точке — если на неё есть маршруты
+ * модуляции; иначе undefined (быстрый статический путь).
+ */
+function makeParamEval(cardId: string, base: Params, mod: ModState, ctx: ModContext): ParamEval | undefined {
+  const resolved = mod.routes
+    .filter((r) => r.card === cardId && r.depth !== 0 && r.src >= 0 && r.src < mod.lfos.length)
+    .map((r) => ({ lfo: mod.lfos[r.src], target: findModTarget(cardId, r.param), param: r.param, depth: r.depth }))
+    .flatMap((r) => (r.target ? [{ ...r, range: r.target.range, exp: r.target.exp === true }] : []));
+  if (resolved.length === 0) return undefined;
+  const eff: Params = { ...base };
+  return (u, v, px, py, pz) => {
+    for (const r of resolved) {
+      const l = lfoValueAt(r.lfo, u, v, px, py, pz, ctx);
+      eff[r.param] = effectiveParam(base[r.param] ?? 0, l, r.depth, r.range, r.exp);
+    }
+    return eff;
+  };
+}
+
+export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh {
+  onProgress?.(0.05, 'sampling');
+  const { grid, height, torus } = baseGrid(p);
+  const ctx: ModContext = { height };
+
   const stack: DisplaceEntry[] = [];
   for (const id of DISPLACE_IDS) {
     const card = p.displace[id];
-    if (card?.on) stack.push({ fn: makeDisplace(id, card.params), weight: 1 });
+    if (!card?.on) continue;
+    const evalAt = makeParamEval(id, card.params, p.mod, ctx);
+    if (evalAt) {
+      const kernel = makeKernel(id, card.params);
+      stack.push({ fn: (u, v, px, py, pz) => kernel(u, v, px, py, pz, evalAt(u, v, px, py, pz)), weight: 1 });
+    } else {
+      stack.push({ fn: makeDisplace(id, card.params), weight: 1 });
+    }
   }
   if (stack.length > 0) {
-    applyDisplacements(grid, gridNormals(grid), stack);
+    const normals = gridNormals(grid);
+    onProgress?.(0.15, 'displacing');
+    applyDisplacements(grid, normals, stack, (j, nv) => {
+      if (onProgress && j % 32 === 0) onProgress(0.15 + 0.45 * (j / nv), 'displacing');
+    });
   }
+  onProgress?.(0.62, 'deforming');
   for (const id of DEFORM_IDS) {
     const card = p.deform[id];
-    if (card?.on) applyDeformer(id, grid, card.params);
+    if (card?.on) applyDeformer(id, grid, card.params, makeParamEval(id, card.params, p.mod, ctx));
   }
-  const { positions, indices } = assembleMesh(grid, p.caps);
-  return { positions, indices, normals: meshNormals(positions, indices) };
+  onProgress?.(0.75, 'assembling');
+  // полярные фигуры всегда закрыты крышками (полюсные дырки), тор — без крышек
+  const caps: CapMode = isShapeId(p.profile) ? 'both' : p.caps;
+  const { positions, indices } = torus ? assembleTorusMesh(grid) : assembleMesh(grid, caps);
+  onProgress?.(0.85, 'normals');
+  const normals = meshNormals(positions, indices);
+  onProgress?.(1, 'done');
+  return { positions, indices, normals };
 }

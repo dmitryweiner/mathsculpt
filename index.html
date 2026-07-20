@@ -32,23 +32,32 @@
               </select>
             </label>
             <label class="row">
-              <span>Resolution</span>
+              <span>Full res</span>
               <select id="resolution">
-                <option value="64">64 × 64</option>
-                <option value="128" selected>128 × 128</option>
-                <option value="256">256 × 256</option>
+                <option value="192">192 × 192</option>
+                <option value="256" selected>256 × 256</option>
+                <option value="384">384 × 384</option>
+                <option value="512">512 × 512</option>
               </select>
             </label>
+            <canvas id="profileGraph"></canvas>
           </section>
+          <div id="fourierWrap"></div>
           <h3 class="group-title">Displacements</h3>
           <div id="displaceCards"></div>
           <h3 class="group-title">Deformers</h3>
           <div id="deformCards"></div>
+          <h3 class="group-title mod-toggle" id="modToggle">Modulation <span id="modCaret">▸</span></h3>
+          <div id="modWrap" hidden></div>
           <p id="status"></p>
           <p id="warnings"></p>
         </aside>
         <main id="viewWrap">
           <canvas id="view"></canvas>
+          <div id="progressWrap" hidden>
+            <div id="progressBar"><div id="progressFill"></div></div>
+            <span id="progressLabel"></span>
+          </div>
         </main>
       </div>
     </div>

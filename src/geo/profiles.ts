@@ -101,6 +101,25 @@ export function profileById(id: string): ProfileDef {
 
 const MIN_RADIUS = 0.02; // страховка от нулевой/отрицательной толщины
 
+// --- Профиль формулой: ряд Фурье r(t) = r₀ + Σ aₖ·sin(kπt + φₖ), k=1..3 ---
+// 3 гармоники дают богатое семейство «кувшинов».
+
+export const FOURIER_PROFILE_ID = 'fourier';
+export const FOURIER_HEIGHT = 1.0;
+
+export const DEFAULT_FOURIER_PARAMS: Record<string, number> = {
+  r0: 0.3, a1: 0.12, phi1: 0, a2: 0.06, phi2: 0, a3: 0, phi3: 0,
+};
+
+export function fourierRadius(p: Record<string, number>, t: number): number {
+  const g = (k: string, d: number): number => (Number.isFinite(p[k]) ? p[k] : d);
+  let r = g('r0', 0.3);
+  r += g('a1', 0) * Math.sin(1 * Math.PI * t + g('phi1', 0));
+  r += g('a2', 0) * Math.sin(2 * Math.PI * t + g('phi2', 0));
+  r += g('a3', 0) * Math.sin(3 * Math.PI * t + g('phi3', 0));
+  return Math.min(1, Math.max(MIN_RADIUS, r));
+}
+
 /** Кубический Эрмит по контрольным точкам; вне [0,1] — крайние значения. */
 export function profileRadius(def: ProfileDef, t: number): number {
   const pts = def.points;

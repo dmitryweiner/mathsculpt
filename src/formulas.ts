@@ -3,6 +3,7 @@
 // с DEFAULT_*_PARAMS ядра (сверяется тестом formulas.test.ts).
 import type { DisplaceId } from './geo/displace';
 import type { DeformId } from './geo/deform';
+import type { ShapeId } from './geo/shapes';
 
 export interface SliderDef {
   k: string;
@@ -90,7 +91,74 @@ export const DISPLACE_CARDS: CardDef<DisplaceId>[] = [
       { k: 'phase', name: 'Phase', ...PHASE, value: 0 },
     ],
   },
+  {
+    id: 'gyroid', title: 'Gyroid pattern', tag: 'TPMS', desc: 'sin x·cos y + sin y·cos z + sin z·cos x at surface point — woven relief',
+    sliders: [
+      { k: 'amp', name: 'Amplitude', min: 0, max: 0.1, step: 0.001, value: 0.02 },
+      { k: 'scale', name: 'Scale', min: 2, max: 30, step: 0.5, value: 12 },
+    ],
+  },
+  {
+    id: 'bytebeat', title: 'Bytebeat relief', tag: '8-bit', desc: 'integer formulas over (u,v) cells — pixel ornament',
+    selects: [
+      { k: 'recipe', name: 'Recipe', value: 1, options: [
+        { v: 1, label: 'OR bands' },
+        { v: 2, label: 'XOR squares' },
+        { v: 3, label: 'Product bits' },
+        { v: 4, label: 'AND weave' },
+      ] },
+    ],
+    sliders: [
+      { k: 'amp', name: 'Amplitude', min: 0, max: 0.1, step: 0.001, value: 0.02 },
+      { k: 'cells', name: 'Cells', min: 4, max: 64, step: 1, value: 16 },
+    ],
+  },
 ];
+
+/** Карточки параметров фигур-носителей (без чекбокса; видны при выборе фигуры). */
+export const SHAPE_CARDS: CardDef<ShapeId>[] = [
+  {
+    id: 'torus', title: 'Torus', tag: 'R, r', desc: '(R + r·cos v)·(cos u, sin u), r·sin v',
+    sliders: [
+      { k: 'R', name: 'Ring radius', min: 0.1, max: 0.5, step: 0.005, value: 0.35 },
+      { k: 'r', name: 'Tube radius', min: 0.05, max: 0.3, step: 0.005, value: 0.15 },
+    ],
+  },
+  {
+    id: 'superellipsoid', title: 'Superellipsoid', tag: 'e1, e2', desc: 'spherical product of superellipses: cube ↔ sphere ↔ octahedron ↔ star',
+    sliders: [
+      { k: 'e1', name: 'Exponent e1', min: 0.1, max: 3, step: 0.05, value: 1 },
+      { k: 'e2', name: 'Exponent e2', min: 0.1, max: 3, step: 0.05, value: 1 },
+    ],
+  },
+  {
+    id: 'supershape', title: 'Supershape', tag: 'Gielis', desc: 'r(φ) = (|cos(mφ/4)|^n₂ + |sin(mφ/4)|^n₃)^(−1/n₁), two sets multiplied',
+    sliders: [
+      { k: 'm1', name: 'm₁ (around)', min: 0, max: 16, step: 1, value: 6 },
+      { k: 'n11', name: 'n₁·1', min: 0.1, max: 10, step: 0.1, value: 1 },
+      { k: 'n12', name: 'n₂·1', min: 0.1, max: 10, step: 0.1, value: 7 },
+      { k: 'n13', name: 'n₃·1', min: 0.1, max: 10, step: 0.1, value: 8 },
+      { k: 'm2', name: 'm₂ (along)', min: 0, max: 16, step: 1, value: 4 },
+      { k: 'n21', name: 'n₁·2', min: 0.1, max: 10, step: 0.1, value: 10 },
+      { k: 'n22', name: 'n₂·2', min: 0.1, max: 10, step: 0.1, value: 10 },
+      { k: 'n23', name: 'n₃·2', min: 0.1, max: 10, step: 0.1, value: 10 },
+    ],
+  },
+];
+
+/** Карточка Фурье-профиля (без чекбокса; видна при profile = fourier). */
+export const FOURIER_CARD: CardDef = {
+  id: 'fourier', title: 'Fourier profile', tag: 'r(z)', desc: 'r(z) = r₀ + Σ aₖ·sin(kπz + φₖ)',
+  sliders: [
+    { k: 'r0', name: 'Base radius', min: 0.05, max: 0.6, step: 0.005, value: 0.3 },
+    { k: 'a1', name: 'Harmonic 1', min: -0.3, max: 0.3, step: 0.005, value: 0.12 },
+    { k: 'phi1', name: 'Phase 1', ...PHASE, value: 0 },
+    { k: 'a2', name: 'Harmonic 2', min: -0.3, max: 0.3, step: 0.005, value: 0.06 },
+    { k: 'phi2', name: 'Phase 2', ...PHASE, value: 0 },
+    { k: 'a3', name: 'Harmonic 3', min: -0.3, max: 0.3, step: 0.005, value: 0 },
+    { k: 'phi3', name: 'Phase 3', ...PHASE, value: 0 },
+  ],
+};
 
 export const DEFORM_CARDS: CardDef<DeformId>[] = [
   {
@@ -111,6 +179,19 @@ export const DEFORM_CARDS: CardDef<DeformId>[] = [
     sliders: [
       { k: 'k', name: 'Fold k', min: 1, max: 12, step: 1, value: 6 },
       { k: 'mix', name: 'Mix', min: 0, max: 1, step: 0.01, value: 1 },
+    ],
+  },
+  {
+    id: 'smooth', title: 'Smooth', tag: 'laplace', desc: 'Laplacian mesh smoothing, 1–5 iterations',
+    sliders: [
+      { k: 'iterations', name: 'Iterations', min: 1, max: 5, step: 1, value: 2 },
+      { k: 'strength', name: 'Strength', min: 0, max: 1, step: 0.01, value: 0.5 },
+    ],
+  },
+  {
+    id: 'quantize', title: 'Quantize', tag: 'voxel', desc: 'snap positions to a grid step — voxel / low-poly look',
+    sliders: [
+      { k: 'step', name: 'Step', min: 0.002, max: 0.1, step: 0.002, value: 0.02 },
     ],
   },
 ];

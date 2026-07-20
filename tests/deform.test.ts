@@ -115,7 +115,8 @@ describe('деформеры в конвейере', () => {
     expect(report.finite).toBe(true);
     expect(report.watertight).toBe(true);
     expect(report.volume).toBeGreaterThan(0);
-    expect(report.degenerateTriangles).toBe(0);
+    // quantize по построению схлопывает часть треугольников в плоские
+    if (id !== 'quantize') expect(report.degenerateTriangles).toBe(0);
   });
 
   it('все деформеры разом + все смещения — валидный меш', () => {

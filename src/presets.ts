@@ -70,4 +70,64 @@ export const PRESETS: BuiltinPreset[] = [
       deform: { symmetry: { on: true, params: { k: 1, mix: 0 } } },
     },
   },
+  {
+    name: 'Fading flutes',
+    state: {
+      profile: 'vase',
+      displace: { ripples: { on: true, params: { amp: 0.03, freqU: 14, freqV: 0, phase: 0 } } },
+      mod: {
+        lfos: [
+          { source: 'z', shape: 'saw', rate: 1, phase: 0.5, k: 1 },
+          { source: 'z', shape: 'sine', rate: 2, phase: 0, k: 1 },
+          { source: 'z', shape: 'sine', rate: 2, phase: 0, k: 1 },
+        ],
+        routes: [{ src: 0, card: 'ripples', param: 'amp', depth: -0.35 }],
+      },
+    },
+  },
+  {
+    name: 'Gyroid sphere',
+    state: {
+      profile: 'sphere',
+      displace: {
+        ripples: { on: false, params: { amp: 0.02, freqU: 12, freqV: 6, phase: 0 } },
+        gyroid: { on: true, params: { amp: 0.035, scale: 16 } },
+      },
+    },
+  },
+  {
+    name: 'Pixel torus',
+    state: {
+      profile: 'torus',
+      shapes: { torus: { R: 0.35, r: 0.16 } },
+      displace: {
+        ripples: { on: false, params: { amp: 0.02, freqU: 12, freqV: 6, phase: 0 } },
+        bytebeat: { on: true, params: { amp: 0.02, cells: 24, recipe: 2 } },
+      },
+    },
+  },
+  {
+    name: 'Supershape flower',
+    state: {
+      profile: 'supershape',
+      shapes: { supershape: { m1: 6, n11: 1, n12: 7, n13: 8, m2: 4, n21: 10, n22: 10, n23: 10 } },
+      displace: { ripples: { on: false, params: { amp: 0.02, freqU: 12, freqV: 6, phase: 0 } } },
+    },
+  },
+  {
+    name: 'Rounded dice',
+    state: {
+      profile: 'superellipsoid',
+      shapes: { superellipsoid: { e1: 0.35, e2: 0.35 } },
+      displace: { ripples: { on: false, params: { amp: 0.02, freqU: 12, freqV: 6, phase: 0 } } },
+    },
+  },
+  {
+    name: 'Low-poly goblet',
+    state: {
+      profile: 'goblet',
+      displace: { ripples: { on: false, params: { amp: 0.02, freqU: 12, freqV: 6, phase: 0 } } },
+      deform: { quantize: { on: true, params: { step: 0.035 } } },
+    },
+  },
 ];

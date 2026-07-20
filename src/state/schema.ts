@@ -6,9 +6,12 @@ import type { CapMode } from '../geo/surface';
 import type { Params } from '../geo/displace';
 import { isDisplaceId } from '../geo/displace';
 import { isDeformId } from '../geo/deform';
-import { isProfileId } from '../geo/profiles';
+import { isProfileId, FOURIER_PROFILE_ID } from '../geo/profiles';
+import { isShapeId } from '../geo/shapes';
 import type { BuildParams, CardState } from '../geo/build';
 import { defaultParams } from '../geo/build';
+import type { ModState, SpatialLfoDef, ModRoute } from '../geo/mod';
+import { LFO_COUNT, isLfoShape, isLfoSource, findModTarget, defaultLfo } from '../geo/mod';
 
 export interface CardSnapshot {
   on: boolean;
@@ -23,6 +26,9 @@ export interface AppState {
   heightMm: number;
   displace: Record<string, CardSnapshot>;
   deform: Record<string, CardSnapshot>;
+  fourier?: Params;
+  shapes?: Record<string, Params>;
+  mod?: ModState;
 }
 
 export interface PartialCardSnapshot {
@@ -37,6 +43,9 @@ export interface PartialAppState {
   heightMm?: number;
   displace?: Record<string, PartialCardSnapshot>;
   deform?: Record<string, PartialCardSnapshot>;
+  fourier?: Params;
+  shapes?: Record<string, Params>;
+  mod?: ModState;
 }
 
 export const DEFAULT_HEIGHT_MM = 120;
@@ -72,12 +81,55 @@ function sanitizeCards(u: unknown, isId: (k: string) => boolean): Record<string,
   return out;
 }
 
+function sanitizeLfo(u: unknown): SpatialLfoDef | null {
+  if (!isRecord(u)) return null;
+  const { source, shape, rate, phase, k } = u;
+  if (!isLfoSource(source) || !isLfoShape(shape)) return null;
+  if (typeof rate !== 'number' || !Number.isFinite(rate)) return null;
+  if (typeof phase !== 'number' || !Number.isFinite(phase)) return null;
+  const kk = typeof k === 'number' && Number.isFinite(k) ? k : 1;
+  return { source, shape, rate, phase, k: kk };
+}
+
+function sanitizeRoute(u: unknown, lfoCount: number): ModRoute | null {
+  if (!isRecord(u)) return null;
+  const { src, card, param, depth } = u;
+  if (typeof src !== 'number' || !Number.isInteger(src) || src < 0 || src >= lfoCount) return null;
+  if (typeof card !== 'string' || typeof param !== 'string') return null;
+  if (!findModTarget(card, param)) return null;
+  if (typeof depth !== 'number' || !Number.isFinite(depth)) return null;
+  return { src, card, param, depth: Math.max(-1, Math.min(1, depth)) };
+}
+
+// Маршруты ссылаются на LFO по индексу (src): битый LFO заменяется дефолтным
+// (не выкидывается — иначе сдвинулись бы индексы), негодные маршруты
+// отбрасываются поштучно. Пул добивается/обрезается до LFO_COUNT.
+function sanitizeMod(u: unknown): ModState | undefined {
+  if (!isRecord(u)) return undefined;
+  if (!Array.isArray(u.lfos) || !Array.isArray(u.routes)) return undefined;
+  const lfos: SpatialLfoDef[] = [];
+  for (let i = 0; i < LFO_COUNT; i++) {
+    lfos.push(sanitizeLfo(u.lfos[i]) ?? defaultLfo());
+  }
+  const routes: ModRoute[] = [];
+  for (const raw of u.routes) {
+    const route = sanitizeRoute(raw, lfos.length);
+    if (route) routes.push(route);
+  }
+  return { lfos, routes };
+}
+
 /** Терпимый разбор состояния из JSON (URL, localStorage, пресеты). */
 export function sanitizeState(u: unknown): PartialAppState | null {
   if (!isRecord(u)) return null;
   const out: PartialAppState = {};
   if (typeof u.presetName === 'string') out.presetName = u.presetName;
-  if (typeof u.profile === 'string' && isProfileId(u.profile)) out.profile = u.profile;
+  if (
+    typeof u.profile === 'string' &&
+    (isProfileId(u.profile) || u.profile === FOURIER_PROFILE_ID || isShapeId(u.profile))
+  ) {
+    out.profile = u.profile;
+  }
   if (isCapMode(u.caps)) out.caps = u.caps;
   if (typeof u.heightMm === 'number' && Number.isFinite(u.heightMm)) {
     out.heightMm = Math.min(400, Math.max(5, u.heightMm));
@@ -86,6 +138,19 @@ export function sanitizeState(u: unknown): PartialAppState | null {
   if (displace) out.displace = displace;
   const deform = sanitizeCards(u.deform, isDeformId);
   if (deform) out.deform = deform;
+  const fourier = toParams(u.fourier);
+  if (fourier) out.fourier = fourier;
+  if (isRecord(u.shapes)) {
+    const shapes: Record<string, Params> = {};
+    for (const [id, sp] of Object.entries(u.shapes)) {
+      if (!isShapeId(id)) continue;
+      const params = toParams(sp);
+      if (params) shapes[id] = params;
+    }
+    out.shapes = shapes;
+  }
+  const mod = sanitizeMod(u.mod);
+  if (mod) out.mod = mod;
   return out;
 }
 
@@ -112,6 +177,27 @@ export function stateToParams(partial: PartialAppState): BuildParams {
   if (partial.caps) p.caps = partial.caps;
   applyCards(p.displace, partial.displace);
   applyCards(p.deform, partial.deform);
+  if (partial.fourier) {
+    for (const k of Object.keys(p.fourier)) {
+      const v = partial.fourier[k];
+      if (typeof v === 'number' && Number.isFinite(v)) p.fourier[k] = v;
+    }
+  }
+  if (partial.shapes) {
+    for (const [id, sp] of Object.entries(partial.shapes)) {
+      if (!isShapeId(id)) continue;
+      for (const k of Object.keys(p.shapes[id])) {
+        const v = sp[k];
+        if (typeof v === 'number' && Number.isFinite(v)) p.shapes[id][k] = v;
+      }
+    }
+  }
+  if (partial.mod) {
+    p.mod = {
+      lfos: partial.mod.lfos.map((l) => ({ ...l })),
+      routes: partial.mod.routes.map((r) => ({ ...r })),
+    };
+  }
   return p;
 }
 
@@ -131,6 +217,17 @@ export function paramsToState(p: BuildParams, heightMm: number, presetName?: str
     heightMm,
     displace: cards(p.displace),
     deform: cards(p.deform),
+    fourier: { ...p.fourier },
+    shapes: {
+      sphere: { ...p.shapes.sphere },
+      torus: { ...p.shapes.torus },
+      superellipsoid: { ...p.shapes.superellipsoid },
+      supershape: { ...p.shapes.supershape },
+    },
+    mod: {
+      lfos: p.mod.lfos.map((l) => ({ ...l })),
+      routes: p.mod.routes.map((r) => ({ ...r })),
+    },
   };
   if (presetName) state.presetName = presetName;
   return state;

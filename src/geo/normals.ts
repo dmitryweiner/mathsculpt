@@ -3,6 +3,7 @@
 // арифметикой, меш — общими вершинами.
 
 import type { Grid } from './surface';
+import { gridRows } from './surface';
 
 /**
  * Нормали в узлах сетки центральными разностями:
@@ -11,11 +12,12 @@ import type { Grid } from './surface';
  */
 export function gridNormals(grid: Grid): Float32Array {
   const { nu, nv, positions } = grid;
-  const normals = new Float32Array(nu * (nv + 1) * 3);
+  const rows = gridRows(grid);
+  const normals = new Float32Array(nu * rows * 3);
   const p = (i: number, j: number, c: number): number => positions[(j * nu + ((i + nu) % nu)) * 3 + c];
-  for (let j = 0; j <= nv; j++) {
-    const j0 = Math.max(0, j - 1);
-    const j1 = Math.min(nv, j + 1);
+  for (let j = 0; j < rows; j++) {
+    const j0 = grid.wrapV ? (j - 1 + rows) % rows : Math.max(0, j - 1);
+    const j1 = grid.wrapV ? (j + 1) % rows : Math.min(nv, j + 1);
     for (let i = 0; i < nu; i++) {
       const tux = p(i + 1, j, 0) - p(i - 1, j, 0);
       const tuy = p(i + 1, j, 1) - p(i - 1, j, 1);

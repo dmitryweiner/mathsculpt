@@ -116,6 +116,40 @@ else {
   if (!st.includes('watertight ✓')) errors.push(`[share:restore] status="${st}"`);
 }
 
+// полная сборка в worker: статус со временем показывает "full NxN"
+ctxLabel = 'worker';
+await page.goto(BASE);
+await page.waitForTimeout(400);
+let fullSeen = false;
+for (let i = 0; i < 30 && !fullSeen; i++) {
+  await page.waitForTimeout(300);
+  const st = await page.locator('#status').textContent();
+  if (st.includes('full ')) fullSeen = true;
+}
+if (!fullSeen) errors.push('[worker] full build never finished (status stuck on preview)');
+else console.log('worker full build ok');
+
+// Фурье-профиль: карточка появляется, меш watertight
+ctxLabel = 'fourier';
+await page.selectOption('#profile', 'fourier');
+await page.waitForTimeout(300);
+const fourierVisible = await page.locator('#card_fourier').isVisible();
+if (!fourierVisible) errors.push('[fourier] card not visible');
+const fst = await page.locator('#status').textContent();
+if (!fst.includes('watertight ✓')) errors.push(`[fourier] status="${fst}"`);
+
+// матрица модуляции: добавить маршрут → бейдж ∿ на слайдере цели
+ctxLabel = 'mod';
+await page.locator('#modToggle').click();
+await page.waitForTimeout(150);
+await page.locator('#addRouteBtn').click();
+await page.waitForTimeout(300);
+const badge = await page.locator('.mod-badge').count();
+if (badge < 1) errors.push('[mod] no ∿ badge after adding route');
+const mst = await page.locator('#status').textContent();
+if (!mst.includes('watertight ✓')) errors.push(`[mod] status="${mst}"`);
+console.log('mod route + badge ok');
+
 // экспорт STL отдаёт непустой валидный буфер (перехватываем download)
 ctxLabel = 'export';
 const downloadP = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);

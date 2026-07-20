@@ -6,12 +6,21 @@
 
 export type CapMode = 'both' | 'bottom' | 'none';
 
-/** Позиции вершин сетки; u замкнут, v — открытый край (низ j=0, верх j=nv). */
+/**
+ * Позиции вершин сетки; u замкнут. Обычно v — открытый край (nv+1 рядов,
+ * низ j=0, верх j=nv); при wrapV (тор) v тоже замкнут: nv рядов, v = j/nv.
+ */
 export interface Grid {
   nu: number;
   nv: number;
-  /** длина nu*(nv+1)*3, layout: (j*nu + i)*3 */
+  /** длина nu*gridRows(grid)*3, layout: (j*nu + i)*3 */
   positions: Float32Array;
+  wrapV?: boolean;
+}
+
+/** Число вершинных рядов сетки. */
+export function gridRows(grid: Grid): number {
+  return grid.wrapV ? grid.nv : grid.nv + 1;
 }
 
 /** Готовый меш: позиции + нормали вершин + индексы треугольников. */
@@ -45,17 +54,22 @@ export function sampleGrid(nu: number, nv: number, f: GridFn): Grid {
 /**
  * Индексы боковой поверхности: квад (i,j) → два треугольника, обход против
  * часовой при взгляде снаружи (нормали наружу для тела вращения r>0).
+ * wrapV — замыкание и по v (тор): последний ряд квадов сшивается с j=0,
+ * вершинных рядов при этом nv (сетка семплируется с nv рядами, не nv+1).
  */
-export function gridIndices(nu: number, nv: number): Uint32Array {
-  const indices = new Uint32Array(nu * nv * 6);
+export function gridIndices(nu: number, nv: number, wrapV = false): Uint32Array {
+  const rows = wrapV ? nv : nv;
+  const rowCount = wrapV ? nv : nv + 1; // вершинных рядов
+  const indices = new Uint32Array(nu * rows * 6);
   let k = 0;
-  for (let j = 0; j < nv; j++) {
+  for (let j = 0; j < rows; j++) {
+    const j1 = wrapV ? (j + 1) % rowCount : j + 1;
     for (let i = 0; i < nu; i++) {
       const i1 = (i + 1) % nu;
       const a = j * nu + i;
       const b = j * nu + i1;
-      const c = (j + 1) * nu + i1;
-      const d = (j + 1) * nu + i;
+      const c = j1 * nu + i1;
+      const d = j1 * nu + i;
       indices[k++] = a;
       indices[k++] = b;
       indices[k++] = c;
@@ -65,6 +79,30 @@ export function gridIndices(nu: number, nv: number): Uint32Array {
     }
   }
   return indices;
+}
+
+/** Сетка, замкнутая и по u, и по v (тор): nu×nv вершин, v = j/nv. */
+export function sampleTorusGrid(nu: number, nv: number, f: GridFn): Grid {
+  if (nu < 3 || nv < 3) throw new Error(`sampleTorusGrid: bad dims ${nu}x${nv}`);
+  const positions = new Float32Array(nu * nv * 3);
+  const out = new Float64Array(3);
+  for (let j = 0; j < nv; j++) {
+    const v = j / nv;
+    for (let i = 0; i < nu; i++) {
+      const u = (2 * Math.PI * i) / nu;
+      f(u, v, out);
+      const k = (j * nu + i) * 3;
+      positions[k] = out[0];
+      positions[k + 1] = out[1];
+      positions[k + 2] = out[2];
+    }
+  }
+  return { nu, nv, positions, wrapV: true };
+}
+
+/** Меш тора: без крышек, шов по u и v сшит индексами. */
+export function assembleTorusMesh(grid: Grid): Omit<SurfaceMesh, 'normals'> {
+  return { positions: new Float32Array(grid.positions), indices: gridIndices(grid.nu, grid.nv, true) };
 }
 
 /**

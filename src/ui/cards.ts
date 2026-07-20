@@ -12,7 +12,12 @@ export interface CardHandles {
   sync(): void;
 }
 
-export function buildCard(def: CardDef, state: CardState, onChange: () => void): CardHandles {
+export interface CardOptions {
+  /** без чекбокса: карточка всегда включена и развёрнута (Фурье-профиль) */
+  alwaysOn?: boolean;
+}
+
+export function buildCard(def: CardDef, state: CardState, onChange: () => void, opts: CardOptions = {}): CardHandles {
   const root = make('div', 'fcard');
   root.id = `card_${def.id}`;
 
@@ -21,7 +26,7 @@ export function buildCard(def: CardDef, state: CardState, onChange: () => void):
   enable.type = 'checkbox';
   enable.id = `en_${def.id}`;
   enable.checked = state.on;
-  head.appendChild(enable);
+  if (!opts.alwaysOn) head.appendChild(enable);
   head.appendChild(make('span', 'fcard-title', def.title));
   head.appendChild(make('span', 'fcard-tag', def.tag));
   const caret = make('span', 'fcard-caret', '▸');
@@ -98,7 +103,7 @@ export function buildCard(def: CardDef, state: CardState, onChange: () => void):
     root.classList.toggle('collapsed', collapsed);
     caret.textContent = collapsed ? '▸' : '▾';
   };
-  setCollapsed(!state.on);
+  setCollapsed(opts.alwaysOn ? false : !state.on);
 
   enable.addEventListener('input', () => {
     state.on = enable.checked;
