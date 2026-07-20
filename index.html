@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MathSculpt — printable surfaces from formulas</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar">
+        <span id="brand">MathSculpt</span>
+        <select id="presetSel"></select>
+        <button id="saveBtn" class="tb-btn" title="Save current state as a user preset">Save</button>
+        <button id="shareBtn" class="tb-btn" title="Copy share link">Share</button>
+        <span class="tb-spacer"></span>
+        <label id="heightLab">Height <input type="number" id="heightMm" min="5" max="400" step="1" value="120" /> mm</label>
+        <button id="exportBtn" class="tb-btn primary">Export STL</button>
+      </header>
+      <div id="content">
+        <aside id="panel">
+          <section class="card">
+            <h2>Shape</h2>
+            <label class="row">
+              <span>Profile</span>
+              <select id="profile"></select>
+            </label>
+            <label class="row">
+              <span>Mode</span>
+              <select id="caps">
+                <option value="both">Solid (closed)</option>
+                <option value="bottom">Open top (hollow vase)</option>
+              </select>
+            </label>
+            <label class="row">
+              <span>Resolution</span>
+              <select id="resolution">
+                <option value="64">64 × 64</option>
+                <option value="128" selected>128 × 128</option>
+                <option value="256">256 × 256</option>
+              </select>
+            </label>
+          </section>
+          <h3 class="group-title">Displacements</h3>
+          <div id="displaceCards"></div>
+          <h3 class="group-title">Deformers</h3>
+          <div id="deformCards"></div>
+          <p id="status"></p>
+          <p id="warnings"></p>
+        </aside>
+        <main id="viewWrap">
+          <canvas id="view"></canvas>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
