@@ -120,6 +120,35 @@ export function fourierRadius(p: Record<string, number>, t: number): number {
   return Math.min(1, Math.max(MIN_RADIUS, r));
 }
 
+// --- Настройка формы пресет-профиля: множители радиуса по зонам ---
+// Делают захардкоженные профили (ваза/амфора/…) редактируемыми: расширить/
+// сузить основание, «пузо» (широкую часть) и горлышко. Косинусные «горбы»
+// с перекрытием дают гладкий результат.
+
+export const DEFAULT_PROFILE_SHAPE: Record<string, number> = { base: 0, belly: 0, neck: 0 };
+
+// косинусный горб: 1 в центре зоны → 0 на её краю (x — норм. расстояние 0..1)
+function zoneBump(x: number): number {
+  const t = Math.min(1, Math.max(0, x));
+  return 0.5 * (1 + Math.cos(Math.PI * t));
+}
+
+const SHAPE_BAND = 0.5; // ширина зоны влияния по t
+
+/** Множитель радиуса профиля от формы: 1 + base·w₀ + belly·w½ + neck·w₁. */
+export function profileShapeFactor(p: Record<string, number>, t: number): number {
+  const g = (k: string): number => (Number.isFinite(p[k]) ? p[k] : 0);
+  const wBase = zoneBump(t / SHAPE_BAND);
+  const wNeck = zoneBump((1 - t) / SHAPE_BAND);
+  const wBelly = zoneBump(Math.abs(t - 0.5) / SHAPE_BAND);
+  return 1 + g('base') * wBase + g('belly') * wBelly + g('neck') * wNeck;
+}
+
+/** Радиус пресет-профиля с учётом настройки формы, с нижним клампом. */
+export function shapedProfileRadius(def: ProfileDef, shape: Record<string, number>, t: number): number {
+  return Math.max(MIN_RADIUS, profileRadius(def, t) * profileShapeFactor(shape, t));
+}
+
 /** Кубический Эрмит по контрольным точкам; вне [0,1] — крайние значения. */
 export function profileRadius(def: ProfileDef, t: number): number {
   const pts = def.points;

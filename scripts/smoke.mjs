@@ -139,12 +139,25 @@ for (let i = 0; i < 30 && !fullSeen; i++) {
 if (!fullSeen) errors.push('[worker] full build never finished (status stuck on preview)');
 else console.log('worker full build ok');
 
-// Фурье-профиль: карточка появляется, меш watertight
+// настройка формы профиля: карточка видна для пресета, скрыта для фигуры,
+// belly>0 меняет геометрию
+ctxLabel = 'profileShape';
+await page.selectOption('#profile', 'vase');
+await page.waitForTimeout(250);
+if (await page.locator('#card_profileShape').isHidden()) errors.push('[profileShape] card hidden for preset');
+await page.locator('#p_profileShape_belly').fill('0.6');
+await page.locator('#p_profileShape_belly').dispatchEvent('input');
+await page.waitForTimeout(250);
+const psStatus = await page.locator('#status').textContent();
+if (!psStatus.includes('watertight ✓')) errors.push(`[profileShape] status="${psStatus}"`);
+
+// Фурье-профиль: карточка появляется, форма профиля скрыта, меш watertight
 ctxLabel = 'fourier';
 await page.selectOption('#profile', 'fourier');
 await page.waitForTimeout(300);
 const fourierVisible = await page.locator('#card_fourier').isVisible();
 if (!fourierVisible) errors.push('[fourier] card not visible');
+if (await page.locator('#card_profileShape').isVisible()) errors.push('[fourier] profileShape card still visible');
 const fst = await page.locator('#status').textContent();
 if (!fst.includes('watertight ✓')) errors.push(`[fourier] status="${fst}"`);
 

@@ -7,7 +7,7 @@ import { assembleMesh, assembleTorusMesh, assembleHollowMesh } from './surface';
 import type { ShapeId } from './shapes';
 import { revolveGrid, shapeGrid, isShapeId, DEFAULT_SHAPE_PARAMS } from './shapes';
 import {
-  profileById, profileRadius,
+  profileById, shapedProfileRadius, DEFAULT_PROFILE_SHAPE,
   FOURIER_PROFILE_ID, FOURIER_HEIGHT, DEFAULT_FOURIER_PARAMS, fourierRadius,
 } from './profiles';
 import { gridNormals, meshNormals } from './normals';
@@ -32,6 +32,8 @@ export interface BuildParams {
   deform: Record<DeformId, CardState>;
   /** параметры Фурье-профиля (используются при profile === 'fourier') */
   fourier: Params;
+  /** настройка формы пресет-профиля: base/belly/neck (см. profileShapeFactor) */
+  profileShape: Params;
   /** параметры фигур-носителей (используются при profile ∈ SHAPE_IDS) */
   shapes: Record<ShapeId, Params>;
   /**
@@ -73,6 +75,7 @@ export function defaultParams(): BuildParams {
       quantize: card(DEFAULT_DEFORM_PARAMS.quantize),
     },
     fourier: { ...DEFAULT_FOURIER_PARAMS },
+    profileShape: { ...DEFAULT_PROFILE_SHAPE },
     shapes: {
       sphere: { ...DEFAULT_SHAPE_PARAMS.sphere },
       torus: { ...DEFAULT_SHAPE_PARAMS.torus },
@@ -110,7 +113,7 @@ export function radiusFnFor(p: BuildParams): { radiusFn: (t: number) => number; 
     return { radiusFn: (t) => fourierRadius(p.fourier, t), height: FOURIER_HEIGHT };
   }
   const def = profileById(p.profile);
-  return { radiusFn: (t) => profileRadius(def, t), height: def.height };
+  return { radiusFn: (t) => shapedProfileRadius(def, p.profileShape, t), height: def.height };
 }
 
 /** Сетка-носитель + высота + способ сборки меша для текущих параметров. */

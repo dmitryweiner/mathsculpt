@@ -12,7 +12,7 @@ import { validateMesh, overhangFraction } from './geo/validate';
 import type { MeshReport } from './geo/validate';
 import { encodeSTL } from './geo/stl';
 import { createScene } from './render/scene';
-import { DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, SHAPE_CARDS } from './formulas';
+import { DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, PROFILE_SHAPE_CARD, SHAPE_CARDS } from './formulas';
 import type { CardHandles } from './ui/cards';
 import { buildCard } from './ui/cards';
 import { setupAdjustmentButtons } from './ui/adjust';
@@ -102,6 +102,9 @@ function rebuildCards(): void {
     deformWrap.appendChild(h.root);
   }
   fourierWrap.innerHTML = '';
+  const psh = buildCard(PROFILE_SHAPE_CARD, { on: true, params: params.profileShape }, onParamChange, { alwaysOn: true });
+  cardHandles.push(psh);
+  fourierWrap.appendChild(psh.root);
   const fh = buildCard(FOURIER_CARD, { on: true, params: params.fourier }, onParamChange, { alwaysOn: true });
   cardHandles.push(fh);
   fourierWrap.appendChild(fh.root);
@@ -116,9 +119,12 @@ function rebuildCards(): void {
   updateModBadges(params.mod);
 }
 
-/** Видимость карточек Фурье/фигур: показывается только выбранный носитель. */
+/** Видимость карточек носителя: показывается только карточка выбранного. */
 function syncShapeCardVisibility(): void {
   fourierWrap.hidden = false;
+  const profileShapeCard = document.getElementById('card_profileShape');
+  // настройка формы — для пресет-профилей (ваза/амфора/…), не для Фурье/фигур
+  if (profileShapeCard) profileShapeCard.hidden = !isProfileId(params.profile);
   const fourierCard = document.getElementById('card_fourier');
   if (fourierCard) fourierCard.hidden = params.profile !== FOURIER_PROFILE_ID;
   for (const def of SHAPE_CARDS) {

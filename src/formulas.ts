@@ -146,6 +146,19 @@ export const SHAPE_CARDS: CardDef<ShapeId>[] = [
   },
 ];
 
+/**
+ * Карточка настройки формы пресет-профиля (ваза/амфора/…): множители радиуса
+ * по зонам. Без чекбокса; видна при выборе пресет-профиля.
+ */
+export const PROFILE_SHAPE_CARD: CardDef = {
+  id: 'profileShape', title: 'Profile shape', tag: 'r(z)', desc: 'widen / narrow the base, belly and neck of the profile',
+  sliders: [
+    { k: 'base', name: 'Base', min: -0.6, max: 1, step: 0.02, value: 0 },
+    { k: 'belly', name: 'Belly', min: -0.6, max: 1, step: 0.02, value: 0 },
+    { k: 'neck', name: 'Neck', min: -0.6, max: 1.5, step: 0.02, value: 0 },
+  ],
+};
+
 /** Карточка Фурье-профиля (без чекбокса; видна при profile = fourier). */
 export const FOURIER_CARD: CardDef = {
   id: 'fourier', title: 'Fourier profile', tag: 'r(z)', desc: 'r(z) = r₀ + Σ aₖ·sin(kπz + φₖ)',

@@ -29,6 +29,7 @@ export interface AppState {
   displace: Record<string, CardSnapshot>;
   deform: Record<string, CardSnapshot>;
   fourier?: Params;
+  profileShape?: Params;
   shapes?: Record<string, Params>;
   mod?: ModState;
 }
@@ -47,6 +48,7 @@ export interface PartialAppState {
   displace?: Record<string, PartialCardSnapshot>;
   deform?: Record<string, PartialCardSnapshot>;
   fourier?: Params;
+  profileShape?: Params;
   shapes?: Record<string, Params>;
   mod?: ModState;
 }
@@ -147,6 +149,8 @@ export function sanitizeState(u: unknown): PartialAppState | null {
   if (deform) out.deform = deform;
   const fourier = toParams(u.fourier);
   if (fourier) out.fourier = fourier;
+  const profileShape = toParams(u.profileShape);
+  if (profileShape) out.profileShape = profileShape;
   if (isRecord(u.shapes)) {
     const shapes: Record<string, Params> = {};
     for (const [id, sp] of Object.entries(u.shapes)) {
@@ -190,6 +194,12 @@ export function stateToParams(partial: PartialAppState): BuildParams {
       if (typeof v === 'number' && Number.isFinite(v)) p.fourier[k] = v;
     }
   }
+  if (partial.profileShape) {
+    for (const k of Object.keys(p.profileShape)) {
+      const v = partial.profileShape[k];
+      if (typeof v === 'number' && Number.isFinite(v)) p.profileShape[k] = v;
+    }
+  }
   if (partial.shapes) {
     for (const [id, sp] of Object.entries(partial.shapes)) {
       if (!isShapeId(id)) continue;
@@ -226,6 +236,7 @@ export function paramsToState(p: BuildParams, heightMm: number, wallMm: number, 
     displace: cards(p.displace),
     deform: cards(p.deform),
     fourier: { ...p.fourier },
+    profileShape: { ...p.profileShape },
     shapes: {
       sphere: { ...p.shapes.sphere },
       torus: { ...p.shapes.torus },

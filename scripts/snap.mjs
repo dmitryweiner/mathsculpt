@@ -8,10 +8,12 @@
 //   node scripts/snap.mjs --profile supershape --full --out shots/s.png   # дождаться worker
 //   node scripts/snap.mjs --width 390 --height 780 --out shots/mobile.png
 //   node scripts/snap.mjs --hash <token> --out shots/shared.png
+//   node scripts/snap.mjs --profile vase --set p_profileShape_belly=0.6 --out shots/x.png
 //
-// Флаги: --profile <id>, --preset <name>, --hash <token>, --width, --height,
-//        --wait <ms> (доп. пауза), --full (ждать полной сборки в worker),
-//        --out <path> (обязателен). Печатает #status и любые ошибки.
+// Флаги: --profile <id>, --preset <name>, --hash <token>, --caps <both|bottom>,
+//        --wall <mm>, --set <id>=<value> (повторяемый — любой input/slider),
+//        --width, --height, --wait <ms> (доп. пауза), --full (ждать полной
+//        сборки в worker), --out <path> (обязателен). Печатает #status и ошибки.
 
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -21,9 +23,12 @@ import { chromium } from 'playwright';
 const args = process.argv.slice(2);
 const VALUE_FLAGS = new Set(['profile', 'preset', 'hash', 'caps', 'wall', 'width', 'height', 'wait', 'out']);
 const flags = new Map();
+const sets = []; // --set id=value (повторяемый): выставить любой input/slider
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
-  if (a.startsWith('--')) {
+  if (a === '--set') {
+    sets.push(args[++i]);
+  } else if (a.startsWith('--')) {
     const name = a.slice(2);
     flags.set(name, VALUE_FLAGS.has(name) ? args[++i] : 'true');
   }
@@ -73,6 +78,14 @@ if (flags.has('wall')) {
   await page.locator('#wallMm').fill(flags.get('wall'));
   await page.locator('#wallMm').dispatchEvent('input');
   await page.waitForTimeout(300);
+}
+for (const pair of sets) {
+  const eq = pair.indexOf('=');
+  const id = pair.slice(0, eq);
+  const value = pair.slice(eq + 1);
+  await page.locator(`#${id}`).fill(value);
+  await page.locator(`#${id}`).dispatchEvent('input');
+  await page.waitForTimeout(200);
 }
 if (flags.has('preset')) {
   await page.selectOption('#presetSel', `b:${flags.get('preset')}`);
