@@ -13,6 +13,11 @@
   box-sizing: border-box;
 }
 
+/* hidden-атрибут должен побеждать display:flex/block из классов (.row и др.) */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;

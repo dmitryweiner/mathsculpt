@@ -106,6 +106,89 @@ export function assembleTorusMesh(grid: Grid): Omit<SurfaceMesh, 'normals'> {
 }
 
 /**
+ * Полый сосуд с открытым верхом: внешняя оболочка (стенки + дно) + внутренняя
+ * (стенки + дно полости) + кольцевой ободок сверху. В отличие от caps='bottom'
+ * (нулевая толщина, vase-mode), это watertight-солид, печатаемый как обычная
+ * модель. `inner` — позиции, смещённые внутрь вдоль нормали, той же раскладки
+ * (nu*(nv+1)), что и outer.positions.
+ */
+export function assembleHollowMesh(outer: Grid, inner: Float32Array): Omit<SurfaceMesh, 'normals'> {
+  const { nu, nv } = outer;
+  const nGrid = nu * (nv + 1);
+  const outPos = new Float32Array((2 * nGrid + 2) * 3);
+  outPos.set(outer.positions, 0);
+  outPos.set(inner, nGrid * 3);
+  const oBase = 0;
+  const iBase = nGrid;
+  const oCap = 2 * nGrid; // центроид внешнего дна
+  const iCap = 2 * nGrid + 1; // центроид дна полости
+
+  const wallTris = nu * nv * 2 * 2; // внешние + внутренние стенки
+  const capTris = nu * 2; // внешнее дно + дно полости
+  const rimTris = nu * 2; // верхний ободок-кольцо
+  const indices = new Uint32Array((wallTris + capTris + rimTris) * 3);
+  let k = 0;
+
+  // внешние стенки (нормаль наружу)
+  for (let j = 0; j < nv; j++) {
+    for (let i = 0; i < nu; i++) {
+      const i1 = (i + 1) % nu;
+      const a = oBase + j * nu + i;
+      const b = oBase + j * nu + i1;
+      const c = oBase + (j + 1) * nu + i1;
+      const d = oBase + (j + 1) * nu + i;
+      indices[k++] = a; indices[k++] = b; indices[k++] = c;
+      indices[k++] = a; indices[k++] = c; indices[k++] = d;
+    }
+  }
+  // внутренние стенки (нормаль внутрь = обратный обход)
+  for (let j = 0; j < nv; j++) {
+    for (let i = 0; i < nu; i++) {
+      const i1 = (i + 1) % nu;
+      const a = iBase + j * nu + i;
+      const b = iBase + (j + 1) * nu + i;
+      const c = iBase + (j + 1) * nu + i1;
+      const d = iBase + j * nu + i1;
+      indices[k++] = a; indices[k++] = b; indices[k++] = c;
+      indices[k++] = a; indices[k++] = c; indices[k++] = d;
+    }
+  }
+
+  const centroid = (base: number, dst: number): void => {
+    let x = 0, y = 0, z = 0;
+    for (let i = 0; i < nu; i++) {
+      const p = (base + i) * 3;
+      x += outPos[p];
+      y += outPos[p + 1];
+      z += outPos[p + 2];
+    }
+    outPos[dst * 3] = x / nu;
+    outPos[dst * 3 + 1] = y / nu;
+    outPos[dst * 3 + 2] = z / nu;
+  };
+  centroid(oBase, oCap);
+  centroid(iBase, iCap);
+
+  // внешнее дно (нормаль вниз)
+  for (let i = 0; i < nu; i++) {
+    indices[k++] = oCap; indices[k++] = oBase + ((i + 1) % nu); indices[k++] = oBase + i;
+  }
+  // дно полости (нормаль вверх)
+  for (let i = 0; i < nu; i++) {
+    indices[k++] = iCap; indices[k++] = iBase + i; indices[k++] = iBase + ((i + 1) % nu);
+  }
+  // верхний ободок: кольцо между внешним и внутренним верхними рядами (нормаль вверх)
+  const oTop = oBase + nv * nu;
+  const iTop = iBase + nv * nu;
+  for (let i = 0; i < nu; i++) {
+    const i1 = (i + 1) % nu;
+    indices[k++] = oTop + i; indices[k++] = oTop + i1; indices[k++] = iTop + i1;
+    indices[k++] = oTop + i; indices[k++] = iTop + i1; indices[k++] = iTop + i;
+  }
+  return { positions: outPos, indices };
+}
+
+/**
  * Собирает меш из сетки: боковые треугольники + крышки веером из центроида
  * граничного кольца. Нормали не считает — см. normals.ts/meshNormals.
  */

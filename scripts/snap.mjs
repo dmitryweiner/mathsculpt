@@ -19,7 +19,7 @@ import { dirname } from 'node:path';
 import { chromium } from 'playwright';
 
 const args = process.argv.slice(2);
-const VALUE_FLAGS = new Set(['profile', 'preset', 'hash', 'width', 'height', 'wait', 'out']);
+const VALUE_FLAGS = new Set(['profile', 'preset', 'hash', 'caps', 'wall', 'width', 'height', 'wait', 'out']);
 const flags = new Map();
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -64,6 +64,15 @@ await page.waitForTimeout(600);
 if (flags.has('profile')) {
   await page.selectOption('#profile', flags.get('profile'));
   await page.waitForTimeout(350);
+}
+if (flags.has('caps')) {
+  await page.selectOption('#caps', flags.get('caps'));
+  await page.waitForTimeout(300);
+}
+if (flags.has('wall')) {
+  await page.locator('#wallMm').fill(flags.get('wall'));
+  await page.locator('#wallMm').dispatchEvent('input');
+  await page.waitForTimeout(300);
 }
 if (flags.has('preset')) {
   await page.selectOption('#presetSel', `b:${flags.get('preset')}`);

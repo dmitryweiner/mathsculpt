@@ -24,6 +24,8 @@ export interface AppState {
   profile: string;
   caps: CapMode;
   heightMm: number;
+  /** толщина стенки в мм для режима open top (0 = оболочка нулевой толщины) */
+  wallMm: number;
   displace: Record<string, CardSnapshot>;
   deform: Record<string, CardSnapshot>;
   fourier?: Params;
@@ -41,6 +43,7 @@ export interface PartialAppState {
   profile?: string;
   caps?: CapMode;
   heightMm?: number;
+  wallMm?: number;
   displace?: Record<string, PartialCardSnapshot>;
   deform?: Record<string, PartialCardSnapshot>;
   fourier?: Params;
@@ -49,6 +52,7 @@ export interface PartialAppState {
 }
 
 export const DEFAULT_HEIGHT_MM = 120;
+export const DEFAULT_WALL_MM = 2;
 
 function isRecord(u: unknown): u is Record<string, unknown> {
   return typeof u === 'object' && u !== null;
@@ -134,6 +138,9 @@ export function sanitizeState(u: unknown): PartialAppState | null {
   if (typeof u.heightMm === 'number' && Number.isFinite(u.heightMm)) {
     out.heightMm = Math.min(400, Math.max(5, u.heightMm));
   }
+  if (typeof u.wallMm === 'number' && Number.isFinite(u.wallMm)) {
+    out.wallMm = Math.min(20, Math.max(0, u.wallMm));
+  }
   const displace = sanitizeCards(u.displace, isDisplaceId);
   if (displace) out.displace = displace;
   const deform = sanitizeCards(u.deform, isDeformId);
@@ -202,7 +209,7 @@ export function stateToParams(partial: PartialAppState): BuildParams {
 }
 
 /** Полное состояние из параметров сборки (для share/сохранения). */
-export function paramsToState(p: BuildParams, heightMm: number, presetName?: string): AppState {
+export function paramsToState(p: BuildParams, heightMm: number, wallMm: number, presetName?: string): AppState {
   const cards = (src: Record<string, CardState>): Record<string, CardSnapshot> => {
     const out: Record<string, CardSnapshot> = {};
     for (const [id, card] of Object.entries(src)) {
@@ -215,6 +222,7 @@ export function paramsToState(p: BuildParams, heightMm: number, presetName?: str
     profile: p.profile,
     caps: p.caps,
     heightMm,
+    wallMm,
     displace: cards(p.displace),
     deform: cards(p.deform),
     fourier: { ...p.fourier },

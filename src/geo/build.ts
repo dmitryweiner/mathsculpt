@@ -3,7 +3,7 @@
 // главным потоком сейчас и Web Worker'ом в фазе 3.
 
 import type { CapMode, SurfaceMesh, Grid } from './surface';
-import { assembleMesh, assembleTorusMesh } from './surface';
+import { assembleMesh, assembleTorusMesh, assembleHollowMesh } from './surface';
 import type { ShapeId } from './shapes';
 import { revolveGrid, shapeGrid, isShapeId, DEFAULT_SHAPE_PARAMS } from './shapes';
 import {
@@ -34,6 +34,12 @@ export interface BuildParams {
   fourier: Params;
   /** параметры фигур-носителей (используются при profile ∈ SHAPE_IDS) */
   shapes: Record<ShapeId, Params>;
+  /**
+   * Толщина стенки в единицах модели (относительных). > 0 при caps='bottom'
+   * для тел вращения → настоящий полый сосуд с плоским дном и watertight-солид.
+   * 0 → оболочка нулевой толщины (vase-mode). UI хранит мм, конвертация — там.
+   */
+  wall: number;
   mod: ModState;
 }
 
@@ -73,8 +79,23 @@ export function defaultParams(): BuildParams {
       superellipsoid: { ...DEFAULT_SHAPE_PARAMS.superellipsoid },
       supershape: { ...DEFAULT_SHAPE_PARAMS.supershape },
     },
+    wall: 0,
     mod: defaultModState(),
   };
+}
+
+/** Тело вращения (не абстрактная фигура и не тор) — у него есть профиль r(z). */
+export function isRevolveProfile(profile: string): boolean {
+  return !isShapeId(profile) && profile !== 'torus';
+}
+
+// Плоское дно: смещения гаснут к v=0 на нижней кромке (первые ~6% высоты).
+// Даёт ровное основание для адгезии и чистое дно у полого сосуда.
+const BOTTOM_FADE = 0.06;
+function bottomFade(v: number): number {
+  if (v >= BOTTOM_FADE) return 1;
+  const t = v / BOTTOM_FADE;
+  return t * t * (3 - 2 * t); // smoothstep
 }
 
 export const DEFAULT_PARAMS: BuildParams = defaultParams();
@@ -127,6 +148,32 @@ function makeParamEval(cardId: string, base: Params, mod: ModState, ctx: ModCont
   };
 }
 
+/**
+ * Полый сосуд: внутренняя оболочка = внешняя, смещённая внутрь на `wall`
+ * вдоль нормали; дно полости поднято на `wall` (плоский пол). Толщина стенки
+ * клампится долей минимального радиуса, чтобы внутренняя стенка не пересекла ось.
+ */
+function buildHollow(grid: Grid, wallRel: number): Omit<SurfaceMesh, 'normals'> {
+  const { positions } = grid;
+  const normals = gridNormals(grid);
+  let zMin = Infinity;
+  let minR = Infinity;
+  for (let i = 0; i < positions.length; i += 3) {
+    zMin = Math.min(zMin, positions[i + 2]);
+    minR = Math.min(minR, Math.hypot(positions[i], positions[i + 1]));
+  }
+  const wall = Math.max(0, Math.min(wallRel, 0.8 * minR));
+  const zFloor = zMin + wall;
+  const inner = new Float32Array(positions.length);
+  for (let i = 0; i < positions.length; i += 3) {
+    inner[i] = positions[i] - wall * normals[i];
+    inner[i + 1] = positions[i + 1] - wall * normals[i + 1];
+    const z = positions[i + 2] - wall * normals[i + 2];
+    inner[i + 2] = Math.max(z, zFloor); // плоский пол полости
+  }
+  return assembleHollowMesh(grid, inner);
+}
+
 export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh {
   onProgress?.(0.05, 'sampling');
   const { grid, height, torus } = baseGrid(p);
@@ -144,12 +191,15 @@ export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh 
       stack.push({ fn: makeDisplace(id, card.params), weight: 1 });
     }
   }
+  // Тело вращения печатается «дном вниз»: гасим смещения у v=0 для плоского
+  // основания. У сферы/тора/суперфигур низа-как-основания нет — не трогаем.
+  const revolve = isRevolveProfile(p.profile);
   if (stack.length > 0) {
     const normals = gridNormals(grid);
     onProgress?.(0.15, 'displacing');
     applyDisplacements(grid, normals, stack, (j, nv) => {
       if (onProgress && j % 32 === 0) onProgress(0.15 + 0.45 * (j / nv), 'displacing');
-    });
+    }, revolve ? bottomFade : undefined);
   }
   onProgress?.(0.62, 'deforming');
   for (const id of DEFORM_IDS) {
@@ -159,7 +209,12 @@ export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh 
   onProgress?.(0.75, 'assembling');
   // полярные фигуры всегда закрыты крышками (полюсные дырки), тор — без крышек
   const caps: CapMode = isShapeId(p.profile) ? 'both' : p.caps;
-  const { positions, indices } = torus ? assembleTorusMesh(grid) : assembleMesh(grid, caps);
+  const hollow = revolve && p.caps === 'bottom' && p.wall > 0;
+  const { positions, indices } = hollow
+    ? buildHollow(grid, p.wall)
+    : torus
+      ? assembleTorusMesh(grid)
+      : assembleMesh(grid, caps);
   onProgress?.(0.85, 'normals');
   const normals = meshNormals(positions, indices);
   onProgress?.(1, 'done');

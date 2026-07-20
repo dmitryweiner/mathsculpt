@@ -4,7 +4,7 @@
 // Web Worker с прогресс-баром (паттерн mandelbulb-worker).
 import './style.css';
 import type { BuildParams } from './geo/build';
-import { buildMesh, defaultParams, radiusFnFor } from './geo/build';
+import { buildMesh, defaultParams, radiusFnFor, isRevolveProfile } from './geo/build';
 import type { SurfaceMesh } from './geo/surface';
 import { PROFILES, isProfileId, FOURIER_PROFILE_ID } from './geo/profiles';
 import { SHAPE_IDS, isShapeId } from './geo/shapes';
@@ -19,7 +19,7 @@ import { setupAdjustmentButtons } from './ui/adjust';
 import { el } from './ui/dom';
 import { drawProfileGraph } from './ui/graph';
 import { buildModPanel, updateModBadges } from './ui/modmatrix';
-import { DEFAULT_HEIGHT_MM, paramsToState, stateToParams, sanitizeState } from './state/schema';
+import { DEFAULT_HEIGHT_MM, DEFAULT_WALL_MM, paramsToState, stateToParams, sanitizeState } from './state/schema';
 import type { PartialAppState } from './state/schema';
 import { encodeStateToken, decodeStateToken, tokenFromHash } from './state/share';
 import { PRESETS } from './presets';
@@ -32,6 +32,9 @@ const capsSel = el('caps', HTMLSelectElement);
 const resolutionSel = el('resolution', HTMLSelectElement);
 const presetSel = el('presetSel', HTMLSelectElement);
 const heightMmInput = el('heightMm', HTMLInputElement);
+const wallRow = el('wallRow', HTMLLabelElement);
+const wallInput = el('wallMm', HTMLInputElement);
+const wallVal = el('wallVal', HTMLOutputElement);
 const saveBtn = el('saveBtn', HTMLButtonElement);
 const shareBtn = el('shareBtn', HTMLButtonElement);
 const exportBtn = el('exportBtn', HTMLButtonElement);
@@ -46,6 +49,8 @@ const progressLabel = el('progressLabel', HTMLSpanElement);
 // --- состояние ---
 let params: BuildParams = defaultParams();
 let presetName = '';
+// толщина стенки задаётся в мм (UI), в build уходит относительной величиной
+let wallMm = DEFAULT_WALL_MM;
 
 // --- шапка: профиль ---
 for (const p of PROFILES) {
@@ -165,6 +170,8 @@ function applyState(partial: PartialAppState): void {
   params = stateToParams(partial);
   presetName = partial.presetName ?? '';
   if (typeof partial.heightMm === 'number') heightMmInput.value = String(partial.heightMm);
+  wallMm = typeof partial.wallMm === 'number' ? partial.wallMm : DEFAULT_WALL_MM;
+  wallInput.value = String(wallMm);
   profileSel.value = params.profile;
   capsSel.value = params.caps;
   rebuildCards();
@@ -190,7 +197,7 @@ saveBtn.addEventListener('click', () => {
   const users = loadUserPresets();
   const name = window.prompt('Preset name:', presetName || `Preset ${nextPresetNumber(users)}`);
   if (!name) return;
-  const state = paramsToState(params, readHeightMm(), name);
+  const state = paramsToState(params, readHeightMm(), wallMm, name);
   const idx = users.findIndex((p) => p.name === name);
   if (idx >= 0) users[idx] = { name, state };
   else users.push({ name, state });
@@ -200,7 +207,7 @@ saveBtn.addEventListener('click', () => {
 });
 
 shareBtn.addEventListener('click', () => {
-  const token = encodeStateToken(paramsToState(params, readHeightMm(), presetName || undefined));
+  const token = encodeStateToken(paramsToState(params, readHeightMm(), wallMm, presetName || undefined));
   const url = `${location.origin}${location.pathname}#s=${token}`;
   history.replaceState(null, '', `#s=${token}`);
   navigator.clipboard?.writeText(url).then(
@@ -226,6 +233,18 @@ let fullDirty = true;
 
 function readHeightMm(): number {
   return Math.min(400, Math.max(5, Number(heightMmInput.value) || DEFAULT_HEIGHT_MM));
+}
+
+/**
+ * Относительная толщина стенки для build: мм → единицы модели. 1 ед. модели =
+ * heightMm/modelHeight мм, поэтому wall_rel = wallMm · modelHeight / heightMm.
+ * Только для тел вращения в режиме open top; иначе 0 (сплошная модель).
+ */
+function relativeWall(): number {
+  if (params.caps !== 'bottom' || wallMm <= 0 || !isRevolveProfile(params.profile)) return 0;
+  const prof = radiusFnFor(params);
+  const modelHeight = prof ? prof.height : 1;
+  return (wallMm * modelHeight) / readHeightMm();
 }
 
 function fullResolution(): number {
@@ -254,14 +273,17 @@ function isRecord(u: unknown): u is Record<string, unknown> {
 
 function showReport(report: MeshReport, overhang: number, buildMs: number, full: boolean): void {
   const kTris = (report.triangleCount / 1000).toFixed(1);
-  const closed = params.caps === 'both'
+  // полый сосуд (open top + стенка) — это уже watertight-солид, а не оболочка
+  const hollow = params.caps === 'bottom' && params.wall > 0;
+  const shouldClose = params.caps === 'both' || hollow;
+  const closed = shouldClose
     ? (report.watertight ? 'watertight ✓' : 'NOT watertight ✗')
-    : 'open top';
+    : 'open top (zero-wall shell)';
   const tag = full ? `full ${resolutionSel.value}×${resolutionSel.value}` : 'preview';
   status.textContent = `${kTris}k triangles · ${closed} · ${tag} · ${buildMs.toFixed(0)} ms`;
   const out: string[] = [];
   if (!report.finite) out.push('⚠ Non-finite vertices — check parameters');
-  if (params.caps === 'both' && !report.watertight) out.push('⚠ Mesh is not watertight');
+  if (shouldClose && !report.watertight) out.push('⚠ Mesh is not watertight');
   if (overhang > 0.02) {
     out.push(`⚠ Overhangs steeper than 60°: ${(overhang * 100).toFixed(0)}% of surface (hard to FDM-print)`);
   }
@@ -344,8 +366,16 @@ function rebuildPreview(): void {
   if (prof) drawProfileGraph(graphCanvas, prof.radiusFn, prof.height);
 }
 
+// Слайдер стенки виден только для полого сосуда (open top + тело вращения).
+function syncWallRow(): void {
+  wallRow.hidden = !(params.caps === 'bottom' && isRevolveProfile(params.profile));
+  wallVal.value = String(wallMm);
+}
+
 function onParamChange(): void {
   syncShapeCardVisibility();
+  syncWallRow();
+  params.wall = relativeWall();
   updateModBadges(params.mod);
   rebuildPreview();
   scheduleFullBuild();
@@ -359,6 +389,14 @@ profileSel.addEventListener('input', () => {
 capsSel.addEventListener('input', () => {
   params.caps = capsSel.value === 'bottom' ? 'bottom' : 'both';
   onParamChange();
+});
+wallInput.addEventListener('input', () => {
+  wallMm = Number(wallInput.value);
+  onParamChange();
+});
+// высота в мм влияет на относительную толщину стенки — пересобрать
+heightMmInput.addEventListener('input', () => {
+  if (params.caps === 'bottom' && isRevolveProfile(params.profile) && wallMm > 0) onParamChange();
 });
 resolutionSel.addEventListener('input', scheduleFullBuild);
 

@@ -95,14 +95,24 @@ for (const v of presetValues) {
 }
 console.log(`presets checked: ${presetValues.length}`);
 
-// open top, share-ссылка кладёт токен в hash и восстанавливается
-ctxLabel = 'toggles';
+// open top + слайдер толщины стенки: wall=0 → оболочка, wall>0 → watertight-солид
+ctxLabel = 'wall';
 await page.selectOption('#caps', 'bottom');
 await page.waitForTimeout(200);
-const openStatus = await page.locator('#status').textContent();
-if (!openStatus.includes('open top')) errors.push(`[toggles] status="${openStatus}"`);
+if (await page.locator('#wallRow').isHidden()) errors.push('[wall] slider hidden in open top');
+await page.locator('#wallMm').fill('0');
+await page.locator('#wallMm').dispatchEvent('input');
+await page.waitForTimeout(300);
+const shellStatus = await page.locator('#status').textContent();
+if (!shellStatus.includes('open top')) errors.push(`[wall0] status="${shellStatus}" (ожидалась оболочка)`);
+await page.locator('#wallMm').fill('3');
+await page.locator('#wallMm').dispatchEvent('input');
+await page.waitForTimeout(300);
+const wallStatus = await page.locator('#status').textContent();
+if (!wallStatus.includes('watertight ✓')) errors.push(`[wall] status="${wallStatus}" (ожидался watertight-солид)`);
 await page.selectOption('#caps', 'both');
 await page.waitForTimeout(200);
+if (await page.locator('#wallRow').isVisible()) errors.push('[wall] slider visible in solid mode');
 
 ctxLabel = 'share';
 await page.locator('#shareBtn').click();

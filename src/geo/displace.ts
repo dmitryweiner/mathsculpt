@@ -152,6 +152,7 @@ export function applyDisplacements(
   normals: Float32Array,
   stack: DisplaceEntry[],
   onRow?: (j: number, nv: number) => void,
+  atten?: (v: number) => number,
 ): void {
   if (stack.length === 0) return;
   const { nu, nv, positions } = grid;
@@ -159,6 +160,7 @@ export function applyDisplacements(
   for (let j = 0; j < rows; j++) {
     onRow?.(j, rows - 1);
     const v = j / nv;
+    const w = atten ? atten(v) : 1;
     for (let i = 0; i < nu; i++) {
       const u = (2 * Math.PI * i) / nu;
       const k = (j * nu + i) * 3;
@@ -167,6 +169,7 @@ export function applyDisplacements(
       const pz = positions[k + 2];
       let d = 0;
       for (const e of stack) d += e.weight * e.fn(u, v, px, py, pz);
+      d *= w;
       positions[k] += normals[k] * d;
       positions[k + 1] += normals[k + 1] * d;
       positions[k + 2] += normals[k + 2] * d;

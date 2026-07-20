@@ -31,6 +31,13 @@ describe('sanitizeState', () => {
     expect(sanitizeState({ heightMm: -3 })?.heightMm).toBe(5);
     expect(sanitizeState({ heightMm: NaN })?.heightMm).toBeUndefined();
   });
+
+  it('wallMm клампится в [0, 20]', () => {
+    expect(sanitizeState({ wallMm: 100 })?.wallMm).toBe(20);
+    expect(sanitizeState({ wallMm: -1 })?.wallMm).toBe(0);
+    expect(sanitizeState({ wallMm: 2.5 })?.wallMm).toBe(2.5);
+    expect(sanitizeState({ wallMm: NaN })?.wallMm).toBeUndefined();
+  });
 });
 
 describe('stateToParams', () => {
@@ -61,12 +68,14 @@ describe('share round-trip', () => {
     params.displace.harmonics.on = true;
     params.displace.harmonics.params.l = 7;
     params.deform.twist = { on: true, params: { turns: 0.4 } };
-    const state = paramsToState(params, 150, 'My goblet');
+    params.caps = 'bottom';
+    const state = paramsToState(params, 150, 3.5, 'My goblet');
     const token = encodeStateToken(state);
     expect(token).toMatch(/^[A-Za-z0-9\-_]+$/);
     const decoded = decodeStateToken(token);
     expect(decoded?.presetName).toBe('My goblet');
     expect(decoded?.heightMm).toBe(150);
+    expect(decoded?.wallMm).toBe(3.5);
     const p2 = stateToParams(decoded ?? {});
     expect(p2.profile).toBe('goblet');
     expect(p2.displace.harmonics.on).toBe(true);
