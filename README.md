@@ -17,8 +17,12 @@ displacements over a base surface and prints the result.
   expose their own parameters.
 - **Displacement stack** (applied along surface normals): ripples,
   Lissajous interference, real spherical harmonics Yₗₘ, seeded simplex fBm
-  noise, LFO waves (triangle/saw/square), gyroid pattern, bytebeat relief.
-- **Deformers**: twist, taper, k-fold symmetry, Laplacian smoothing, quantize.
+  noise, LFO waves, TPMS fields, cellular/Voronoi and domain-warped noise,
+  phyllotaxis, localized Gaussian lobes, logistic chaos, knurling, polygonal,
+  superformula and star-interference relief.
+- **Deformers**: twist, taper, bulge/pinch, bend, shear, axial waves, elliptic
+  sections, neck flare, corrugation, k-fold symmetry, Laplacian/Taubin
+  smoothing and quantize.
 - **Spatial LFO mod matrix** — modulators are functions of *coordinates*
   (height z, azimuth θ, spiral z+k·θ, radius, distance), not time. The
   preview is static and deterministic; a phase slider replaces time.
@@ -33,6 +37,9 @@ displacements over a base surface and prints the result.
   possible self-intersections.
 - Presets, shareable `#s=…` links (base64url state), user presets in
   localStorage.
+- Bounded Undo/Redo history with keyboard shortcuts.
+- Safe STL export gate for non-finite, invalid, inside-out, non-watertight or
+  severely degenerate solid meshes.
 
 ## Development
 

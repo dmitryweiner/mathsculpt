@@ -5,6 +5,8 @@ import type { SurfaceMesh } from './surface';
 export interface MeshReport {
   /** все позиции и нормали конечны */
   finite: boolean;
+  /** indices are complete integer triangles and point at existing vertices */
+  indicesValid: boolean;
   /** каждое ребро ровно в 2 треугольниках с противоположной ориентацией */
   watertight: boolean;
   /** знаковый объём; > 0 — нормали наружу */
@@ -13,6 +15,34 @@ export interface MeshReport {
   /** треугольники с площадью < eps */
   degenerateTriangles: number;
   triangleCount: number;
+  vertexCount: number;
+  extents: [number, number, number];
+}
+
+export interface ExportAssessment {
+  blocking: string[];
+  warnings: string[];
+}
+
+/** Central export gate shared by the UI and tests. */
+export function assessExport(report: MeshReport, shouldBeClosed: boolean): ExportAssessment {
+  const blocking: string[] = [];
+  const warnings: string[] = [];
+  if (!report.finite) blocking.push('Mesh contains non-finite coordinates or normals.');
+  if (!report.indicesValid) blocking.push('Mesh contains invalid triangle indices.');
+  if (report.triangleCount === 0 || report.vertexCount === 0) blocking.push('Mesh is empty.');
+  if (report.extents.some((extent) => !Number.isFinite(extent) || extent <= 1e-9)) {
+    blocking.push('Mesh has zero extent on at least one axis.');
+  }
+  if (shouldBeClosed && !report.watertight) blocking.push('Solid mesh is not watertight.');
+  if (shouldBeClosed && report.volume < 0) blocking.push('Solid mesh is oriented inside-out.');
+  if (report.degenerateTriangles > 0) {
+    const ratio = report.triangleCount > 0 ? report.degenerateTriangles / report.triangleCount : 1;
+    const message = `${report.degenerateTriangles} degenerate triangle(s) (${(ratio * 100).toFixed(2)}%).`;
+    if (ratio > 0.01) blocking.push(message);
+    else warnings.push(message);
+  }
+  return { blocking, warnings };
 }
 
 /**
@@ -57,11 +87,13 @@ export function validateMesh(mesh: SurfaceMesh, areaEps = 1e-12): MeshReport {
   const { positions, indices } = mesh;
 
   let finite = true;
-  for (let i = 0; i < positions.length; i++) {
-    if (!Number.isFinite(positions[i])) {
+  for (const values of [positions, mesh.normals]) {
+    for (let i = 0; i < values.length; i++) {
+      if (Number.isFinite(values[i])) continue;
       finite = false;
       break;
     }
+    if (!finite) break;
   }
 
   const min: [number, number, number] = [Infinity, Infinity, Infinity];
@@ -78,10 +110,17 @@ export function validateMesh(mesh: SurfaceMesh, areaEps = 1e-12): MeshReport {
   // b→a: −1). Watertight ⇔ каждое ребро встречено дважды и balance = 0.
   const edges = new Map<number, { count: number; balance: number }>();
   const nVerts = positions.length / 3;
+  let indicesValid = indices.length % 3 === 0;
+  for (let i = 0; i < indices.length; i++) {
+    if (indices[i] >= nVerts) {
+      indicesValid = false;
+      break;
+    }
+  }
   const edgeKey = (a: number, b: number): number => (a < b ? a * nVerts + b : b * nVerts + a);
   let volume6 = 0;
   let degenerate = 0;
-  for (let t = 0; t < indices.length; t += 3) {
+  for (let t = 0; indicesValid && t < indices.length; t += 3) {
     const ia = indices[t];
     const ib = indices[t + 1];
     const ic = indices[t + 2];
@@ -113,7 +152,7 @@ export function validateMesh(mesh: SurfaceMesh, areaEps = 1e-12): MeshReport {
       positions[a + 1] * (positions[b] * positions[c + 2] - positions[b + 2] * positions[c]) +
       positions[a + 2] * (positions[b] * positions[c + 1] - positions[b + 1] * positions[c]);
   }
-  let watertight = true;
+  let watertight = indicesValid && indices.length > 0;
   for (const e of edges.values()) {
     if (e.count !== 2 || e.balance !== 0) {
       watertight = false;
@@ -121,12 +160,20 @@ export function validateMesh(mesh: SurfaceMesh, areaEps = 1e-12): MeshReport {
     }
   }
 
+  const extents: [number, number, number] = [
+    max[0] - min[0],
+    max[1] - min[1],
+    max[2] - min[2],
+  ];
   return {
     finite,
+    indicesValid,
     watertight,
     volume: volume6 / 6,
     bbox: { min, max },
     degenerateTriangles: degenerate,
     triangleCount: indices.length / 3,
+    vertexCount: nVerts,
+    extents,
   };
 }

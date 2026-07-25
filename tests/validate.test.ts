@@ -1,7 +1,7 @@
 // Валидатор: watertight-детектор ловит дырки, overhangFraction — свесы.
 import { sampleGrid, assembleMesh } from '../src/geo/surface';
 import { meshNormals } from '../src/geo/normals';
-import { validateMesh, overhangFraction } from '../src/geo/validate';
+import { validateMesh, overhangFraction, assessExport } from '../src/geo/validate';
 
 const revolve = (rOfT: (t: number) => number, nu = 24, nv = 12) =>
   sampleGrid(nu, nv, (u, v, out) => {
@@ -52,5 +52,29 @@ describe('overhangFraction', () => {
   it('сужение кверху — свесов нет', () => {
     const mesh = withNormals(assembleMesh(revolve((t) => 1 - 0.5 * t), 'both'));
     expect(overhangFraction(mesh)).toBe(0);
+  });
+});
+
+describe('export assessment', () => {
+  it('allows a valid closed mesh', () => {
+    const report = validateMesh(withNormals(assembleMesh(revolve(() => 1), 'both')));
+    expect(assessExport(report, true).blocking).toEqual([]);
+    expect(report.indicesValid).toBe(true);
+    expect(report.extents).toEqual([2, 2, 1]);
+  });
+
+  it('blocks an invalid index instead of reading outside the buffers', () => {
+    const mesh = withNormals(assembleMesh(revolve(() => 1), 'both'));
+    mesh.indices[0] = mesh.positions.length;
+    const report = validateMesh(mesh);
+    expect(report.indicesValid).toBe(false);
+    expect(report.watertight).toBe(false);
+    expect(assessExport(report, true).blocking.some((s) => s.includes('indices'))).toBe(true);
+  });
+
+  it('checks normals for non-finite values', () => {
+    const mesh = withNormals(assembleMesh(revolve(() => 1), 'both'));
+    mesh.normals[0] = NaN;
+    expect(validateMesh(mesh).finite).toBe(false);
   });
 });

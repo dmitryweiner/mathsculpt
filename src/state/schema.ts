@@ -12,6 +12,11 @@ import type { BuildParams, CardState } from '../geo/build';
 import { defaultParams } from '../geo/build';
 import type { ModState, SpatialLfoDef, ModRoute } from '../geo/mod';
 import { LFO_COUNT, isLfoShape, isLfoSource, findModTarget, defaultLfo } from '../geo/mod';
+import {
+  DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, PROFILE_SHAPE_CARD,
+  SHAPE_CARDS, clampCardParam,
+} from '../formulas';
+import type { CardDef } from '../formulas';
 
 export interface CardSnapshot {
   on: boolean;
@@ -165,17 +170,23 @@ export function sanitizeState(u: unknown): PartialAppState | null {
   return out;
 }
 
-function applyCards(target: Record<string, CardState>, partial?: Record<string, PartialCardSnapshot>): void {
+function applyCards(
+  target: Record<string, CardState>,
+  defs: readonly CardDef[],
+  partial?: Record<string, PartialCardSnapshot>,
+): void {
   if (!partial) return;
   for (const [id, snap] of Object.entries(partial)) {
     const card = target[id];
     if (!card) continue;
     if (typeof snap.on === 'boolean') card.on = snap.on;
     if (snap.params) {
-      // только известные ключи: params дефолтов определяют состав
       for (const k of Object.keys(card.params)) {
         const v = snap.params[k];
-        if (typeof v === 'number' && Number.isFinite(v)) card.params[k] = v;
+        const def = defs.find((candidate) => candidate.id === id);
+        if (!def || typeof v !== 'number') continue;
+        const safe = clampCardParam(def, k, v);
+        if (safe !== undefined) card.params[k] = safe;
       }
     }
   }
@@ -186,26 +197,34 @@ export function stateToParams(partial: PartialAppState): BuildParams {
   const p = defaultParams();
   if (partial.profile) p.profile = partial.profile;
   if (partial.caps) p.caps = partial.caps;
-  applyCards(p.displace, partial.displace);
-  applyCards(p.deform, partial.deform);
+  applyCards(p.displace, DISPLACE_CARDS, partial.displace);
+  applyCards(p.deform, DEFORM_CARDS, partial.deform);
   if (partial.fourier) {
     for (const k of Object.keys(p.fourier)) {
       const v = partial.fourier[k];
-      if (typeof v === 'number' && Number.isFinite(v)) p.fourier[k] = v;
+      if (typeof v !== 'number') continue;
+      const safe = clampCardParam(FOURIER_CARD, k, v);
+      if (safe !== undefined) p.fourier[k] = safe;
     }
   }
   if (partial.profileShape) {
     for (const k of Object.keys(p.profileShape)) {
       const v = partial.profileShape[k];
-      if (typeof v === 'number' && Number.isFinite(v)) p.profileShape[k] = v;
+      if (typeof v !== 'number') continue;
+      const safe = clampCardParam(PROFILE_SHAPE_CARD, k, v);
+      if (safe !== undefined) p.profileShape[k] = safe;
     }
   }
   if (partial.shapes) {
     for (const [id, sp] of Object.entries(partial.shapes)) {
       if (!isShapeId(id)) continue;
+      const def = SHAPE_CARDS.find((candidate) => candidate.id === id);
+      if (!def) continue;
       for (const k of Object.keys(p.shapes[id])) {
         const v = sp[k];
-        if (typeof v === 'number' && Number.isFinite(v)) p.shapes[id][k] = v;
+        if (typeof v !== 'number') continue;
+        const safe = clampCardParam(def, k, v);
+        if (safe !== undefined) p.shapes[id][k] = safe;
       }
     }
   }

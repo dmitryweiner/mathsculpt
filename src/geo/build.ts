@@ -66,6 +66,16 @@ export function defaultParams(): BuildParams {
       waves: card(DEFAULT_DISPLACE_PARAMS.waves),
       gyroid: card(DEFAULT_DISPLACE_PARAMS.gyroid),
       bytebeat: card(DEFAULT_DISPLACE_PARAMS.bytebeat),
+      gaussian: card(DEFAULT_DISPLACE_PARAMS.gaussian),
+      phyllotaxis: card(DEFAULT_DISPLACE_PARAMS.phyllotaxis),
+      cellular: card(DEFAULT_DISPLACE_PARAMS.cellular),
+      warp: card(DEFAULT_DISPLACE_PARAMS.warp),
+      tpms: card(DEFAULT_DISPLACE_PARAMS.tpms),
+      logistic: card(DEFAULT_DISPLACE_PARAMS.logistic),
+      superformula: card(DEFAULT_DISPLACE_PARAMS.superformula),
+      knurl: card(DEFAULT_DISPLACE_PARAMS.knurl),
+      polygon: card(DEFAULT_DISPLACE_PARAMS.polygon),
+      star: card(DEFAULT_DISPLACE_PARAMS.star),
     },
     deform: {
       twist: card(DEFAULT_DEFORM_PARAMS.twist),
@@ -73,6 +83,14 @@ export function defaultParams(): BuildParams {
       symmetry: card(DEFAULT_DEFORM_PARAMS.symmetry),
       smooth: card(DEFAULT_DEFORM_PARAMS.smooth),
       quantize: card(DEFAULT_DEFORM_PARAMS.quantize),
+      bulge: card(DEFAULT_DEFORM_PARAMS.bulge),
+      bend: card(DEFAULT_DEFORM_PARAMS.bend),
+      shear: card(DEFAULT_DEFORM_PARAMS.shear),
+      axial: card(DEFAULT_DEFORM_PARAMS.axial),
+      elliptic: card(DEFAULT_DEFORM_PARAMS.elliptic),
+      flare: card(DEFAULT_DEFORM_PARAMS.flare),
+      corrugate: card(DEFAULT_DEFORM_PARAMS.corrugate),
+      taubin: card(DEFAULT_DEFORM_PARAMS.taubin),
     },
     fourier: { ...DEFAULT_FOURIER_PARAMS },
     profileShape: { ...DEFAULT_PROFILE_SHAPE },
@@ -152,13 +170,13 @@ function makeParamEval(cardId: string, base: Params, mod: ModState, ctx: ModCont
 }
 
 /**
- * Полый сосуд: внутренняя оболочка = внешняя, смещённая внутрь на `wall`
- * вдоль нормали; дно полости поднято на `wall` (плоский пол). Толщина стенки
- * клампится долей минимального радиуса, чтобы внутренняя стенка не пересекла ось.
+ * Полый сосуд вращения: внутренняя оболочка смещена радиально к оси. В отличие
+ * от общего normal offset это сохраняет заданную горизонтальную толщину на
+ * крутых плечах/горлышке и не уводит внутренние вершины по высоте. Дно полости
+ * поднято на `wall`; толщина клампится, чтобы не пересечь ось.
  */
 function buildHollow(grid: Grid, wallRel: number): Omit<SurfaceMesh, 'normals'> {
   const { positions } = grid;
-  const normals = gridNormals(grid);
   let zMin = Infinity;
   let minR = Infinity;
   for (let i = 0; i < positions.length; i += 3) {
@@ -169,10 +187,13 @@ function buildHollow(grid: Grid, wallRel: number): Omit<SurfaceMesh, 'normals'> 
   const zFloor = zMin + wall;
   const inner = new Float32Array(positions.length);
   for (let i = 0; i < positions.length; i += 3) {
-    inner[i] = positions[i] - wall * normals[i];
-    inner[i + 1] = positions[i + 1] - wall * normals[i + 1];
-    const z = positions[i + 2] - wall * normals[i + 2];
-    inner[i + 2] = Math.max(z, zFloor); // плоский пол полости
+    const x = positions[i];
+    const y = positions[i + 1];
+    const radius = Math.hypot(x, y);
+    const scale = radius > 1e-12 ? Math.max(0.2, (radius - wall) / radius) : 0.2;
+    inner[i] = x * scale;
+    inner[i + 1] = y * scale;
+    inner[i + 2] = Math.max(positions[i + 2], zFloor); // плоский пол полости
   }
   return assembleHollowMesh(grid, inner);
 }

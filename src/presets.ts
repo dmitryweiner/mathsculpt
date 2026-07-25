@@ -130,4 +130,73 @@ export const PRESETS: BuiltinPreset[] = [
       deform: { quantize: { on: true, params: { step: 0.035 } } },
     },
   },
+  {
+    name: 'Fibonacci bloom',
+    state: {
+      profile: 'gaussian-profile',
+      displace: {
+        ripples: { on: false },
+        phyllotaxis: { on: true, params: { amp: 0.025, turns: 13, slope: 8, phase: 0 } },
+        gaussian: { on: true, params: { amp: 0.025, center: 0.72, width: 0.18, lobes: 8, phase: 0 } },
+      },
+    },
+  },
+  {
+    name: 'Voronoi stone',
+    state: {
+      profile: 'catenary',
+      displace: {
+        ripples: { on: false },
+        cellular: { on: true, params: { amp: 0.025, scale: 9, seed: 17, sharpness: 2.4 } },
+      },
+      deform: { flare: { on: true, params: { amount: 0.2, start: 0.78, power: 1.5 } } },
+    },
+  },
+  {
+    name: 'Marble flow',
+    state: {
+      profile: 'bezier',
+      displace: {
+        ripples: { on: false },
+        warp: { on: true, params: { amp: 0.035, scale: 5, warp: 0.8, seed: 23 } },
+      },
+      deform: { axial: { on: true, params: { amp: 0.04, freq: 1.5, phase: 0 } } },
+    },
+  },
+  {
+    name: 'Neovius vessel',
+    state: {
+      profile: 'superellipse-profile',
+      displace: {
+        ripples: { on: false },
+        tpms: { on: true, params: { amp: 0.025, scale: 12, family: 4, sharpness: 0.8 } },
+      },
+      deform: { elliptic: { on: true, params: { ratio: 1.2, phase: 0.4 } } },
+    },
+  },
+  {
+    name: 'Chaotic knurl',
+    state: {
+      profile: 'piecewise',
+      displace: {
+        ripples: { on: false },
+        logistic: { on: true, params: { amp: 0.018, rate: 3.86, seed: 0.37, layers: 32, freqU: 7 } },
+        knurl: { on: true, params: { amp: 0.012, freqU: 14, freqV: 9, sharpness: 2 } },
+      },
+      deform: { taubin: { on: true, params: { iterations: 1, lambda: 0.5, mu: -0.53 } } },
+    },
+  },
+  {
+    name: 'Star polygon',
+    state: {
+      profile: 'stem-bowl',
+      displace: {
+        ripples: { on: false },
+        polygon: { on: true, params: { amp: 0.04, sides: 7, roundness: 0.9, phase: 0 } },
+        star: { on: true, params: { amp: 0.012, order: 7, freqV: 4, layers: 2, phase: 0 } },
+        superformula: { on: true, params: { amp: 0.02, m: 7, n1: 1, n2: 7, n3: 8, mix: 0.6 } },
+      },
+      deform: { corrugate: { on: true, params: { amp: 0.025, folds: 14, phase: 0 } } },
+    },
+  },
 ];

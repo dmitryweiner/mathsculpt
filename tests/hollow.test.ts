@@ -105,4 +105,19 @@ describe('полый сосуд (open top + wall > 0)', () => {
     expect(validateMesh(buildMesh(vessel('amphora', 'bottom', 0, false))).watertight).toBe(false);
     expect(validateMesh(buildMesh(vessel('amphora', 'bottom', 0.02, false))).watertight).toBe(true);
   });
+
+  it('внутренняя стенка имеет заданный радиальный отступ', () => {
+    const p = vessel('bottle', 'bottom', 0.02, false);
+    const mesh = buildMesh(p);
+    const outerCount = p.nu * (p.nv + 1);
+    const row = Math.floor(p.nv * 0.7);
+    for (let i = 0; i < p.nu; i += 7) {
+      const outer = (row * p.nu + i) * 3;
+      const inner = (outerCount + row * p.nu + i) * 3;
+      const ro = Math.hypot(mesh.positions[outer], mesh.positions[outer + 1]);
+      const ri = Math.hypot(mesh.positions[inner], mesh.positions[inner + 1]);
+      expect(ro - ri).toBeCloseTo(0.02, 5);
+      expect(mesh.positions[inner + 2]).toBeCloseTo(mesh.positions[outer + 2], 6);
+    }
+  });
 });

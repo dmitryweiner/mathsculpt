@@ -4,6 +4,8 @@
 // Значение LFO — чистая функция точки: результат детерминирован, превью
 // статично, вместо времени — слайдер фазы.
 
+import { DISPLACE_CARDS, DEFORM_CARDS } from '../formulas';
+
 export type LfoShape = 'sine' | 'triangle' | 'saw' | 'square' | 'random'; // random = S&H
 export type LfoSource = 'z' | 'theta' | 'spiral' | 'radius' | 'dist';
 
@@ -65,29 +67,26 @@ export interface ModTarget {
   exp?: boolean;
 }
 
+const NON_MODULATED = new Set([
+  'harmonics.l', 'harmonics.m', 'noise.octaves', 'noise.seed',
+  'symmetry.k', 'smooth.iterations',
+]);
+
 export const MOD_TARGETS: readonly ModTarget[] = [
-  { card: 'ripples', param: 'amp', range: [0, 0.15] },
-  { card: 'ripples', param: 'freqU', range: [0, 32] },
-  { card: 'ripples', param: 'freqV', range: [0, 24] },
-  { card: 'ripples', param: 'phase', range: [0, 6.283] },
-  { card: 'lissajous', param: 'amp', range: [0, 0.15] },
-  { card: 'lissajous', param: 'freqU', range: [0, 32] },
-  { card: 'lissajous', param: 'freqV', range: [0, 24] },
-  { card: 'lissajous', param: 'phaseU', range: [0, 6.283] },
-  { card: 'lissajous', param: 'phaseV', range: [0, 6.283] },
-  { card: 'harmonics', param: 'amp', range: [0, 0.2] },
-  { card: 'harmonics', param: 'phase', range: [0, 6.283] },
-  { card: 'noise', param: 'amp', range: [0, 0.1] },
-  { card: 'noise', param: 'scale', range: [0.5, 10], exp: true },
-  { card: 'waves', param: 'amp', range: [0, 0.1] },
-  { card: 'waves', param: 'freqU', range: [0, 32] },
-  { card: 'waves', param: 'freqV', range: [0, 24] },
-  { card: 'waves', param: 'phase', range: [0, 6.283] },
-  { card: 'twist', param: 'turns', range: [-2, 2] },
-  { card: 'taper', param: 'amount', range: [-1, 0.95] },
-  { card: 'taper', param: 'power', range: [0.3, 3] },
-  { card: 'symmetry', param: 'mix', range: [0, 1] },
-];
+  ...DISPLACE_CARDS,
+  ...DEFORM_CARDS,
+].flatMap((card) => card.sliders.flatMap((slider) => {
+  if (NON_MODULATED.has(`${card.id}.${slider.k}`)) return [];
+  const exp = slider.min > 0 && (
+    slider.k === 'scale' || slider.k === 'power' || slider.k === 'step'
+  );
+  return [{
+    card: card.id,
+    param: slider.k,
+    range: [slider.min, slider.max] as const,
+    ...(exp ? { exp: true } : {}),
+  }];
+}));
 
 export function findModTarget(card: string, param: string): ModTarget | undefined {
   return MOD_TARGETS.find((t) => t.card === card && t.param === param);

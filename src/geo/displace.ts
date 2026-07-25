@@ -18,7 +18,11 @@ export interface DisplaceEntry {
   weight: number;
 }
 
-export const DISPLACE_IDS = ['ripples', 'lissajous', 'harmonics', 'noise', 'waves', 'gyroid', 'bytebeat'] as const;
+export const DISPLACE_IDS = [
+  'ripples', 'lissajous', 'harmonics', 'noise', 'waves', 'gyroid', 'bytebeat',
+  'gaussian', 'phyllotaxis', 'cellular', 'warp', 'tpms', 'logistic',
+  'superformula', 'knurl', 'polygon', 'star',
+] as const;
 export type DisplaceId = (typeof DISPLACE_IDS)[number];
 
 export function isDisplaceId(x: string): x is DisplaceId {
@@ -34,6 +38,16 @@ export const DEFAULT_DISPLACE_PARAMS: Record<DisplaceId, Params> = {
   waves: { amp: 0.02, shape: 0, freqU: 8, freqV: 0, phase: 0 },
   gyroid: { amp: 0.02, scale: 12 },
   bytebeat: { amp: 0.02, cells: 16, recipe: 1 },
+  gaussian: { amp: 0.04, center: 0.55, width: 0.15, lobes: 6, phase: 0 },
+  phyllotaxis: { amp: 0.025, turns: 13, slope: 8, phase: 0 },
+  cellular: { amp: 0.025, scale: 8, seed: 17, sharpness: 2 },
+  warp: { amp: 0.03, scale: 5, warp: 0.5, seed: 23 },
+  tpms: { amp: 0.025, scale: 12, family: 1, sharpness: 1 },
+  logistic: { amp: 0.03, rate: 3.8, seed: 0.37, layers: 24, freqU: 8 },
+  superformula: { amp: 0.04, m: 6, n1: 1, n2: 7, n3: 8, mix: 1 },
+  knurl: { amp: 0.025, freqU: 12, freqV: 8, sharpness: 2 },
+  polygon: { amp: 0.04, sides: 6, roundness: 0.8, phase: 0 },
+  star: { amp: 0.025, order: 8, freqV: 5, layers: 3, phase: 0 },
 };
 
 const num = (p: Params, k: string, d: number): number => (Number.isFinite(p[k]) ? p[k] : d);
@@ -125,6 +139,133 @@ function bytebeatKernel(staticP: Params): DisplaceKernel {
   };
 }
 
+function gaussianKernel(): DisplaceKernel {
+  return (u, v, _px, _py, _pz, p) => {
+    const width = Math.max(0.01, num(p, 'width', 0.15));
+    const envelope = Math.exp(-Math.pow((v - num(p, 'center', 0.55)) / width, 2));
+    return num(p, 'amp', 0.04) * envelope *
+      Math.cos(num(p, 'lobes', 6) * u + num(p, 'phase', 0));
+  };
+}
+
+function phyllotaxisKernel(): DisplaceKernel {
+  return (u, v, _px, _py, _pz, p) => num(p, 'amp', 0.025) *
+    Math.cos(num(p, 'turns', 13) * u - 2 * Math.PI * num(p, 'slope', 8) * v + num(p, 'phase', 0)) *
+    Math.sin(Math.PI * Math.min(1, Math.max(0, v)));
+}
+
+function hashCell(x: number, y: number, z: number, seed: number): number {
+  const n = Math.sin(x * 127.1 + y * 311.7 + z * 74.7 + seed * 19.19) * 43758.5453;
+  return frac(n);
+}
+
+function cellularKernel(staticP: Params): DisplaceKernel {
+  const seed = Math.round(num(staticP, 'seed', 17));
+  return (_u, _v, px, py, pz, p) => {
+    const scale = num(p, 'scale', 8);
+    const x = px * scale, y = py * scale, z = pz * scale;
+    const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+    let f1 = Infinity, f2 = Infinity;
+    for (let dz = -1; dz <= 1; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const cx = ix + dx, cy = iy + dy, cz = iz + dz;
+      const ox = hashCell(cx, cy, cz, seed);
+      const oy = hashCell(cx, cy, cz, seed + 11);
+      const oz = hashCell(cx, cy, cz, seed + 29);
+      const d = Math.hypot(cx + ox - x, cy + oy - y, cz + oz - z);
+      if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+    }
+    const edge = Math.min(1, Math.max(0, (f2 - f1) * num(p, 'sharpness', 2)));
+    return num(p, 'amp', 0.025) * (2 * edge - 1);
+  };
+}
+
+function warpKernel(staticP: Params): DisplaceKernel {
+  const seed = Math.round(num(staticP, 'seed', 23));
+  const n1 = simplex3(seed);
+  const n2 = simplex3(seed + 101);
+  return (_u, _v, px, py, pz, p) => {
+    const scale = num(p, 'scale', 5);
+    const amount = num(p, 'warp', 0.5);
+    const q = n1(px * scale, py * scale, pz * scale) * amount;
+    return num(p, 'amp', 0.03) * n2(px * scale + q, py * scale - q, pz * scale + 0.5 * q);
+  };
+}
+
+function tpmsKernel(staticP: Params): DisplaceKernel {
+  const family = Math.round(num(staticP, 'family', 1));
+  return (_u, _v, px, py, pz, p) => {
+    const s = num(p, 'scale', 12);
+    const x = px * s, y = py * s, z = pz * s;
+    let g: number;
+    if (family === 2) g = Math.cos(x) + Math.cos(y) + Math.cos(z);
+    else if (family === 3) {
+      g = Math.sin(x) * Math.sin(y) * Math.sin(z) +
+        Math.sin(x) * Math.cos(y) * Math.cos(z) +
+        Math.cos(x) * Math.sin(y) * Math.cos(z) +
+        Math.cos(x) * Math.cos(y) * Math.sin(z);
+    } else if (family === 4) {
+      g = 3 * (Math.cos(x) + Math.cos(y) + Math.cos(z)) +
+        4 * Math.cos(x) * Math.cos(y) * Math.cos(z);
+    } else {
+      g = Math.sin(x) * Math.cos(y) + Math.sin(y) * Math.cos(z) + Math.sin(z) * Math.cos(x);
+    }
+    return num(p, 'amp', 0.025) * Math.tanh(g * num(p, 'sharpness', 1));
+  };
+}
+
+function logisticKernel(staticP: Params): DisplaceKernel {
+  const layers = Math.max(2, Math.round(num(staticP, 'layers', 24)));
+  const rate = num(staticP, 'rate', 3.8);
+  const values = new Float64Array(layers + 1);
+  values[0] = num(staticP, 'seed', 0.37);
+  for (let i = 1; i <= layers; i++) values[i] = rate * values[i - 1] * (1 - values[i - 1]);
+  return (u, v, _px, _py, _pz, p) => {
+    const at = Math.min(layers, Math.max(0, v * layers));
+    const i = Math.min(layers - 1, Math.floor(at));
+    const x = values[i] * (1 - (at - i)) + values[i + 1] * (at - i);
+    return num(p, 'amp', 0.03) * (2 * x - 1) * Math.cos(num(p, 'freqU', 8) * u);
+  };
+}
+
+function superformulaKernel(): DisplaceKernel {
+  return (u, _v, _px, _py, _pz, p) => {
+    const n1 = Math.max(0.1, num(p, 'n1', 1));
+    const a = Math.pow(Math.abs(Math.cos(num(p, 'm', 6) * u / 4)), num(p, 'n2', 7));
+    const b = Math.pow(Math.abs(Math.sin(num(p, 'm', 6) * u / 4)), num(p, 'n3', 8));
+    const r = Math.pow(Math.max(1e-9, a + b), -1 / n1);
+    return num(p, 'amp', 0.04) * num(p, 'mix', 1) * Math.max(-1, Math.min(1, r - 1));
+  };
+}
+
+function knurlKernel(): DisplaceKernel {
+  return (u, v, _px, _py, _pz, p) => {
+    const a = Math.cos(num(p, 'freqU', 12) * u + 2 * Math.PI * num(p, 'freqV', 8) * v);
+    const b = Math.cos(num(p, 'freqU', 12) * u - 2 * Math.PI * num(p, 'freqV', 8) * v);
+    const value = Math.sign(a * b) * Math.pow(Math.abs(a * b), 1 / Math.max(0.2, num(p, 'sharpness', 2)));
+    return num(p, 'amp', 0.025) * value;
+  };
+}
+
+function polygonKernel(): DisplaceKernel {
+  return (u, _v, _px, _py, _pz, p) => {
+    const sides = Math.max(3, Math.round(num(p, 'sides', 6)));
+    const local = ((u + num(p, 'phase', 0) + Math.PI / sides) % (2 * Math.PI / sides)) - Math.PI / sides;
+    const exact = Math.cos(Math.PI / sides) / Math.cos(local);
+    return num(p, 'amp', 0.04) * num(p, 'roundness', 0.8) * (exact - 1);
+  };
+}
+
+function starKernel(): DisplaceKernel {
+  return (u, v, _px, _py, _pz, p) => {
+    const layers = Math.max(1, Math.round(num(p, 'layers', 3)));
+    let value = 1;
+    for (let i = 1; i <= layers; i++) {
+      value *= Math.cos(i * num(p, 'order', 8) * u + 2 * Math.PI * (layers - i + 1) * num(p, 'freqV', 5) * v + num(p, 'phase', 0));
+    }
+    return num(p, 'amp', 0.025) * value;
+  };
+}
+
 export function makeKernel(id: DisplaceId, staticParams: Params): DisplaceKernel {
   switch (id) {
     case 'ripples': return ripplesKernel();
@@ -134,6 +275,16 @@ export function makeKernel(id: DisplaceId, staticParams: Params): DisplaceKernel
     case 'waves': return wavesKernel(staticParams);
     case 'gyroid': return gyroidKernel();
     case 'bytebeat': return bytebeatKernel(staticParams);
+    case 'gaussian': return gaussianKernel();
+    case 'phyllotaxis': return phyllotaxisKernel();
+    case 'cellular': return cellularKernel(staticParams);
+    case 'warp': return warpKernel(staticParams);
+    case 'tpms': return tpmsKernel(staticParams);
+    case 'logistic': return logisticKernel(staticParams);
+    case 'superformula': return superformulaKernel();
+    case 'knurl': return knurlKernel();
+    case 'polygon': return polygonKernel();
+    case 'star': return starKernel();
   }
 }
 

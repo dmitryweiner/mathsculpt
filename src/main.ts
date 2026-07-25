@@ -8,7 +8,7 @@ import { buildMesh, defaultParams, radiusFnFor, isRevolveProfile } from './geo/b
 import type { SurfaceMesh } from './geo/surface';
 import { PROFILES, isProfileId, FOURIER_PROFILE_ID } from './geo/profiles';
 import { SHAPE_IDS, isShapeId } from './geo/shapes';
-import { validateMesh, overhangFraction } from './geo/validate';
+import { validateMesh, overhangFraction, assessExport } from './geo/validate';
 import type { MeshReport } from './geo/validate';
 import { encodeSTL } from './geo/stl';
 import { createScene } from './render/scene';
@@ -37,6 +37,8 @@ const wallInput = el('wallMm', HTMLInputElement);
 const wallVal = el('wallVal', HTMLOutputElement);
 const saveBtn = el('saveBtn', HTMLButtonElement);
 const shareBtn = el('shareBtn', HTMLButtonElement);
+const undoBtn = el('undoBtn', HTMLButtonElement);
+const redoBtn = el('redoBtn', HTMLButtonElement);
 const exportBtn = el('exportBtn', HTMLButtonElement);
 const status = el('status', HTMLParagraphElement);
 const warnings = el('warnings', HTMLParagraphElement);
@@ -237,9 +239,104 @@ let fullTimer: ReturnType<typeof setTimeout> | null = null;
 let lastFullMesh: SurfaceMesh | null = null;
 let fullDirty = true;
 
+// --- bounded, coalesced application-state history ---
+const HISTORY_LIMIT = 100;
+const HISTORY_COALESCE_MS = 300;
+const undoStack: PartialAppState[] = [];
+const redoStack: PartialAppState[] = [];
+let historyPresent: PartialAppState | null = null;
+let pendingHistoryBase: PartialAppState | null = null;
+let historyTimer: ReturnType<typeof setTimeout> | null = null;
+let restoringHistory = false;
+
 function readHeightMm(): number {
   return Math.min(400, Math.max(5, Number(heightMmInput.value) || DEFAULT_HEIGHT_MM));
 }
+
+function historySnapshot(): PartialAppState {
+  return paramsToState(params, readHeightMm(), wallMm, presetName || undefined);
+}
+
+function sameState(a: PartialAppState, b: PartialAppState): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function syncHistoryButtons(): void {
+  undoBtn.disabled = undoStack.length === 0 && pendingHistoryBase === null;
+  redoBtn.disabled = redoStack.length === 0;
+}
+
+function flushHistory(): void {
+  if (historyTimer) clearTimeout(historyTimer);
+  historyTimer = null;
+  if (pendingHistoryBase) {
+    undoStack.push(pendingHistoryBase);
+    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+    pendingHistoryBase = null;
+  }
+  syncHistoryButtons();
+}
+
+function recordHistory(): void {
+  const next = historySnapshot();
+  if (restoringHistory) {
+    historyPresent = next;
+    return;
+  }
+  if (!historyPresent) {
+    historyPresent = next;
+    syncHistoryButtons();
+    return;
+  }
+  if (sameState(historyPresent, next)) return;
+  if (!pendingHistoryBase) pendingHistoryBase = historyPresent;
+  historyPresent = next;
+  redoStack.length = 0;
+  if (historyTimer) clearTimeout(historyTimer);
+  historyTimer = setTimeout(flushHistory, HISTORY_COALESCE_MS);
+  syncHistoryButtons();
+}
+
+function restoreHistory(state: PartialAppState): void {
+  restoringHistory = true;
+  applyState(state);
+  restoringHistory = false;
+  historyPresent = historySnapshot();
+  syncHistoryButtons();
+}
+
+function undo(): void {
+  flushHistory();
+  const previous = undoStack.pop();
+  if (!previous || !historyPresent) return;
+  redoStack.push(historyPresent);
+  restoreHistory(previous);
+}
+
+function redo(): void {
+  flushHistory();
+  const next = redoStack.pop();
+  if (!next || !historyPresent) return;
+  undoStack.push(historyPresent);
+  restoreHistory(next);
+}
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+window.addEventListener('keydown', (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+  const key = event.key.toLowerCase();
+  if (key === 'z' && event.shiftKey) {
+    event.preventDefault();
+    redo();
+  } else if (key === 'z') {
+    event.preventDefault();
+    undo();
+  } else if (key === 'y') {
+    event.preventDefault();
+    redo();
+  }
+});
 
 /**
  * Относительная толщина стенки для build: мм → единицы модели. 1 ед. модели =
@@ -289,7 +386,12 @@ function showReport(report: MeshReport, overhang: number, buildMs: number, full:
   status.textContent = `${kTris}k triangles · ${closed} · ${tag} · ${buildMs.toFixed(0)} ms`;
   const out: string[] = [];
   if (!report.finite) out.push('⚠ Non-finite vertices — check parameters');
+  if (!report.indicesValid) out.push('⚠ Invalid triangle indices');
   if (shouldClose && !report.watertight) out.push('⚠ Mesh is not watertight');
+  if (shouldClose && report.volume < 0) out.push('⚠ Mesh is oriented inside-out');
+  if (report.degenerateTriangles > 0) {
+    out.push(`⚠ Degenerate triangles: ${report.degenerateTriangles}`);
+  }
   if (overhang > 0.02) {
     out.push(`⚠ Overhangs steeper than 60°: ${(overhang * 100).toFixed(0)}% of surface (hard to FDM-print)`);
   }
@@ -385,6 +487,7 @@ function onParamChange(): void {
   updateModBadges(params.mod);
   rebuildPreview();
   scheduleFullBuild();
+  recordHistory();
 }
 
 profileSel.addEventListener('input', () => {
@@ -402,7 +505,7 @@ wallInput.addEventListener('input', () => {
 });
 // высота в мм влияет на относительную толщину стенки — пересобрать
 heightMmInput.addEventListener('input', () => {
-  if (params.caps === 'bottom' && isRevolveProfile(params.profile) && wallMm > 0) onParamChange();
+  onParamChange();
 });
 resolutionSel.addEventListener('input', scheduleFullBuild);
 
@@ -412,6 +515,18 @@ exportBtn.addEventListener('click', () => {
     ? buildMesh({ ...params, nu: fullResolution(), nv: fullResolution() })
     : lastFullMesh;
   const report = validateMesh(mesh);
+  const shouldBeClosed = params.caps === 'both' || (
+    params.caps === 'bottom' && params.wall > 0
+  );
+  const assessment = assessExport(report, shouldBeClosed);
+  if (assessment.blocking.length > 0) {
+    warnings.textContent = `Export blocked:\n${assessment.blocking.map((issue) => `• ${issue}`).join('\n')}`;
+    return;
+  }
+  if (
+    assessment.warnings.length > 0 &&
+    !window.confirm(`The mesh has warnings:\n\n${assessment.warnings.join('\n')}\n\nExport anyway?`)
+  ) return;
   const zExtent = report.bbox.max[2] - report.bbox.min[2];
   const targetMm = readHeightMm();
   const name = presetName || params.profile;

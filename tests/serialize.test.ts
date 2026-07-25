@@ -59,6 +59,26 @@ describe('stateToParams', () => {
     expect(p.displace.ripples.params.amp).toBe(0.1);
     expect(p.displace.ripples.params.hack).toBeUndefined();
   });
+
+  it('клампит параметры по диапазонам карточек', () => {
+    const p = stateToParams({
+      displace: {
+        ripples: { params: { amp: 999, freqU: -4 } },
+        waves: { params: { shape: 999 } },
+      },
+      deform: { twist: { params: { turns: -99 } } },
+      fourier: { r0: 99 },
+      profileShape: { neck: -99 },
+      shapes: { torus: { R: 99 } },
+    });
+    expect(p.displace.ripples.params.amp).toBe(0.15);
+    expect(p.displace.ripples.params.freqU).toBe(0);
+    expect(p.displace.waves.params.shape).toBe(0);
+    expect(p.deform.twist.params.turns).toBe(-2);
+    expect(p.fourier.r0).toBe(0.6);
+    expect(p.profileShape.neck).toBe(-0.6);
+    expect(p.shapes.torus.R).toBe(0.5);
+  });
 });
 
 describe('share round-trip', () => {
