@@ -1,38 +1,29 @@
 #!/usr/bin/env node
-// Скриншоты превью: по одному на каждый профиль → ./shots
-import { spawn } from 'node:child_process';
+// Скриншоты превью: по одному на каждый профиль → ./shots (или --out <dir>).
+// Сервер и браузер — китовой обвязки (scripts/lib/harness.mjs).
+//
+//   node scripts/shot.mjs                 # dev-сервер (:5287)
+//   node scripts/shot.mjs --out shots/p   # в другую папку
+
 import { mkdirSync } from 'node:fs';
-import { chromium } from 'playwright';
+import { join } from 'node:path';
+import { launch, parseArgs, VIEWPORTS } from './lib/harness.mjs';
 
-const BASE = 'http://localhost:5287';
+const flags = parseArgs(process.argv.slice(2), ['out']);
+const dir = flags.get('out') ?? 'shots';
+mkdirSync(dir, { recursive: true });
 
-async function serverUp() {
-  try {
-    return (await fetch(BASE)).ok;
-  } catch {
-    return false;
+const app = await launch({ preview: flags.has('preview') });
+await app.run(async () => {
+  const { page, context } = await app.open({ viewport: VIEWPORTS.desktop, locale: 'en-US' });
+  await page.waitForSelector('#status[data-build]');
+  const ids = await page.$$eval('#shape_profile option', (els) => els.map((e) => e.value));
+  for (const id of ids) {
+    await page.selectOption('#shape_profile', id);
+    await page.waitForTimeout(300);
+    const path = join(dir, `${id}.png`);
+    await page.screenshot({ path });
+    console.log(path);
   }
-}
-
-let devProc = null;
-if (!(await serverUp())) {
-  devProc = spawn('npx', ['vite', '--port', '5287', '--strictPort'], { stdio: 'ignore' });
-  for (let i = 0; i < 30 && !(await serverUp()); i++) await new Promise((r) => setTimeout(r, 1000));
-}
-
-mkdirSync('shots', { recursive: true });
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
-await page.goto(BASE);
-await page.waitForTimeout(600);
-
-const ids = await page.$$eval('#shape_profile option', (els) => els.map((e) => e.value));
-for (const id of ids) {
-  await page.selectOption('#shape_profile', id);
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: `shots/${id}.png` });
-  console.log(`shots/${id}.png`);
-}
-
-await browser.close();
-devProc?.kill();
+  await context.close();
+}, `${dir}: one shot per profile`);
