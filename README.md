@@ -44,13 +44,13 @@ displacements over a base surface and prints the result.
 ## Development
 
 ```bash
-npm install
+npm ci
 npm run dev       # Vite dev server
-npm run check     # tsc + eslint + vitest (214 tests)
+npm run check     # tsc + oxlint + prettier + vitest (334 tests)
 npm run smoke     # headless-Chromium smoke: every profile/card/preset builds
                   # without console errors, STL export works
 npm run shot      # screenshots of every profile → ./shots
-npm run build     # production build → ./docs (GitHub Pages)
+npm run build     # production build → ./dist
 ```
 
 Golden geometry tests pin the exact output of every profile; regenerate

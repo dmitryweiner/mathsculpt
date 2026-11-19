@@ -25,14 +25,45 @@ Existing helpers:
 When a new one-off check is needed more than once, add it to `snap.mjs`/`smoke.mjs`
 as a flag or step instead of spawning a temp file.
 
+## Plans
+
+Plans live in `plans/`. A new plan is `plans/PLAN-<TOPIC>.md` and a line
+here.
+
+- `plans/PLAN.md` — the app's architecture and milestones (done).
+- `plans/IMPLEMENTATION_PLAN.md` — the expansion: formula registry, export
+  gate, undo, hollow vessels, new formulas (done).
+- `plans/PLAN-MAKER-KIT.md` — the move to maker-kit (M5), PR by PR; in
+  progress.
+
 ## Build / test commands
 
+Node — the version in `.node-version` (24); check `node -v`.
+
 ```bash
-npm run check     # tsc + eslint (bans `as` casts) + vitest
-npm run smoke     # browser smoke (see above); --preview for prod build
+npm run check     # tsc (TypeScript 7) + oxlint --type-aware (bans `as` casts) + prettier --check + vitest
+npm run format    # prettier --write (not *.md and golden: .prettierignore)
+npm run smoke     # browser smoke (dev :5287); --preview for the prod build (:4287) — build first
 npm run shot      # profile screenshots → ./shots
-npm run build     # production build → ./docs (GitHub Pages)
+npm run build     # production build → ./dist
 ```
+
+The lint is oxlint (`.oxlintrc.json`): typescript-eslint does not support
+TS 7. Each rule switched off there says why. The prettier reformatting is
+in `.git-blame-ignore-revs` (`git config blame.ignoreRevsFile
+.git-blame-ignore-revs`).
+
+GitHub Pages is published by `.github/workflows/deploy.yml` on every push
+to `main`: `npm ci`, `npm run check`, `npm run build`, the smoke on the
+production build, then `dist/`. A PR runs the same without publishing.
+The build is not committed (`dist/` is ignored).
+
+The smoke scripts use the ports 5287 (dev) and 4287 (preview) with
+`--strictPort`: 5173 is every project's default, and a stale server of
+another project there would be tested by mistake. The old scripts kill
+`npx`, and `vite preview` under it may survive on 4287: stop it before the
+next `--preview` (fixed when the scripts move to maker-kit's harness,
+m5-harness).
 
 Golden geometry tests pin exact per-profile output; regenerate consciously with
 `UPDATE_GOLDEN=1 npx vitest run tests/golden.test.ts` after an intentional
