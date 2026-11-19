@@ -12,8 +12,9 @@ over the model's lower part: its handle (or a tap on the model) lowers it,
 zoom; the grid under it is a 200 × 200 mm printer bed with 1 cm cells.
 
 The top bar holds the presets button (it shows the open preset's name, with
-● once you have changed the model), 💾 to save the model as a preset of
-yours, ↶ ↷ to undo and redo, and 🌐 for the language.
+● once you have changed the model), 📄 to start a new model from the
+defaults (one undo step: ↶ brings the previous one back), 💾 to save the
+model as a preset of yours, ↶ ↷ to undo and redo, and 🌐 for the language.
 
 ## The panel, top to bottom
 

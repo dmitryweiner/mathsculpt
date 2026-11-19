@@ -47,7 +47,7 @@ import { meshVerdicts, statusText } from './ui/report';
 import { applyStaticText } from './ui/staticText';
 import { buildParamsOf, defaultState } from './state/schema';
 import type { AppState } from './state/schema';
-import { PRESETS, presetById } from './state/presets';
+import { BLANK_ID, PRESETS, presetById } from './state/presets';
 import type { SculptPreset } from './state/userPresets';
 import { savePresetAs, userPresetsRecord } from './state/userPresets';
 import type { BuildJob, BuildResult } from './worker/protocol';
@@ -58,6 +58,7 @@ const PREVIEW_N = 96;
 const HISTORY_LIMIT = 100;
 
 const presetBtn = el('presetBtn', HTMLButtonElement);
+const newBtn = el('newBtn', HTMLButtonElement);
 const saveBtn = el('saveBtn', HTMLButtonElement);
 const undoBtn = el('undoBtn', HTMLButtonElement);
 const redoBtn = el('redoBtn', HTMLButtonElement);
@@ -260,6 +261,14 @@ function drawPresetList(): void {
 presetBtn.addEventListener('click', () => {
   drawPresetList();
   presetsDialog.open(presetBtn);
+});
+
+// 📄 Новое — пустой пресет кита: модель по умолчанию под именем «New model», один шаг отмены
+newBtn.addEventListener('click', () => {
+  const blank = presetById(BLANK_ID);
+  if (!blank) return;
+  presetRef = makePresetRef('b', BLANK_ID);
+  edit(blank.build(), true);
 });
 
 saveBtn.addEventListener('click', () => {

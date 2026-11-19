@@ -40,6 +40,7 @@ export const he: Record<Key, string> = {
   'stage.done': 'מוכן',
 
   // --- presets ---
+  'preset.blank.name': 'מודל חדש',
   'preset.classic-vase.name': 'אגרטל קלסי',
   'preset.twisted-column.name': 'עמוד מפותל',
   'preset.faceted-tumbler.name': 'כוס פאות',

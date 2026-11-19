@@ -100,7 +100,7 @@ All of them are on maker-kit's harness (`scripts/lib/harness.mjs`):
   `p_<card>_<key>`; `lfo<i>_<key>`, `route<i>_<key>`.
 - `scripts/smoke.mjs` — the browser smoke in the kit's steps, each on a fresh
   page: every profile, card and preset (through the kit's dialog) builds
-  watertight; undo/redo; 💾 + reload; open top and the wall; the worker's
+  watertight; undo/redo; 📄 New and its undo; 💾 + reload; open top and the wall; the worker's
   full build; profile-shape and Fourier cards; a modulation route and ∿; a
   real STL download, its height in mm; languages (ru-RU browser, 🌐, Hebrew
   mirrored, the choice kept); no sideways scroll; the phone sheet.
@@ -160,7 +160,7 @@ Measured on an M-series Mac, 2026-11-19.
 | What | Cost |
 |---|---|
 | `npm run check` | ~3 s (437 tests) |
-| `npm run smoke` / `-- --preview` | ~40 s (13 steps; the preview builds first) |
+| `npm run smoke` / `-- --preview` | ~40 s (14 steps; the preview builds first) |
 | Preview 96×96 on the main thread | ≤ 25 ms (worst preset, Voronoi stone) |
 | Full build in the worker (from the job's arrival, with the checks) | 170 ms at 256², 712 ms at 512² (Voronoi stone); ~80 ms at 256² for the default vase |
 | Main chunk | ~655 KB (~173 KB gzip): three is most of it; the worker 44 KB |
