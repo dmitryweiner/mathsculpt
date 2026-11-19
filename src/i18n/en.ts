@@ -21,6 +21,9 @@ export const en = {
   // --- export: the button, the status line, the verdicts of the app's own ---
   'export.button': 'Export STL',
   'export.blocked': 'Export blocked: the mesh would not print.',
+  'export.progress': 'Building the STL…',
+  'export.failed': 'The export failed: {error}',
+  'build.failed': 'The full build failed: {error}',
   'status.line': '{k}k triangles · {closed} · {build} · {ms} ms',
   'status.watertight': 'watertight ✓',
   'status.notWatertight': 'NOT watertight ✗',

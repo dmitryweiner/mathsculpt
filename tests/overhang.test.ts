@@ -1,6 +1,6 @@
 // overhangFraction — доля свесов круче 60° (замкнутость и сито экспорта проверяет кит).
 import { sampleGrid, assembleMesh } from '../src/geo/surface';
-import { meshNormals } from '../src/geo/normals';
+import { meshNormals } from 'maker-kit/3d/mesh';
 import { overhangFraction } from '../src/geo/overhang';
 
 const revolve = (rOfT: (t: number) => number, nu = 24, nv = 12) =>

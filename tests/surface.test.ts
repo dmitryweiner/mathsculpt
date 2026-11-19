@@ -1,7 +1,7 @@
 // Юниты ядра сетки: размерности, индексация, сшитый шов, крышки.
 import { sampleGrid, gridIndices, assembleMesh } from '../src/geo/surface';
 import { validateMesh } from 'maker-kit/3d/validate';
-import { meshNormals } from '../src/geo/normals';
+import { meshNormals } from 'maker-kit/3d/mesh';
 
 const cylinder = (nu: number, nv: number) =>
   sampleGrid(nu, nv, (u, v, out) => {

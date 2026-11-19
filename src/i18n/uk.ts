@@ -19,6 +19,9 @@ export const uk: Record<Key, string> = {
   // --- export: the button, the status line, the verdicts of the app's own ---
   'export.button': 'Вивантажити STL',
   'export.blocked': 'Вивантаження зупинено: такий меш не надрукувати.',
+  'export.progress': 'Збираю STL…',
+  'export.failed': 'Вивантаження не вдалося: {error}',
+  'build.failed': 'Повне збирання не вдалося: {error}',
   'status.line': '{k} тис. трикутників · {closed} · {build} · {ms} мс',
   'status.watertight': 'замкнений ✓',
   'status.notWatertight': 'НЕ замкнений ✗',
