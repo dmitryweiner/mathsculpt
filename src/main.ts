@@ -25,7 +25,7 @@ import { restoreCards, snapshotCards } from 'maker-kit/ui/card';
 import type { Control } from 'maker-kit/ui/controls';
 import { renderControls } from 'maker-kit/ui/controls';
 import { el } from 'maker-kit/ui/dom';
-import { download } from 'maker-kit/ui/files';
+import { download, pickFile } from 'maker-kit/ui/files';
 import { bindHistory } from 'maker-kit/ui/historyKeys';
 import { createLanguagePicker } from 'maker-kit/ui/languagePicker';
 import { renderMessages } from 'maker-kit/ui/messageList';
@@ -48,10 +48,12 @@ import { applyStaticText } from './ui/staticText';
 import { buildParamsOf, defaultState } from './state/schema';
 import type { AppState } from './state/schema';
 import { BLANK_ID, PRESETS, presetById } from './state/presets';
+import { decodeProject, encodeProject, projectFile } from './state/projectFile';
 import type { SculptPreset } from './state/userPresets';
 import { savePresetAs, userPresetsRecord } from './state/userPresets';
 import type { BuildJob, BuildResult } from './worker/protocol';
 import type { Key } from './i18n';
+import type { Params } from './i18n';
 import { LANGS, autoPresetPrefixes, hasKey, initLang, lang, onLangChange, setLang, t, tDynamic, tm, tr } from './i18n';
 
 const PREVIEW_N = 96;
@@ -60,6 +62,8 @@ const HISTORY_LIMIT = 100;
 const presetBtn = el('presetBtn', HTMLButtonElement);
 const newBtn = el('newBtn', HTMLButtonElement);
 const saveBtn = el('saveBtn', HTMLButtonElement);
+const fileOpenBtn = el('fileOpenBtn', HTMLButtonElement);
+const fileSaveBtn = el('fileSaveBtn', HTMLButtonElement);
 const undoBtn = el('undoBtn', HTMLButtonElement);
 const redoBtn = el('redoBtn', HTMLButtonElement);
 const exportBtn = el('exportBtn', HTMLButtonElement);
@@ -81,6 +85,8 @@ const history = new History<AppState>(defaultState(), HISTORY_LIMIT);
 let params: BuildParams = buildParamsOf(history.state);
 /** открытый пресет (`b:<id>`, `u:<id>`) или никакой */
 let presetRef: PresetRef = '';
+/** имя, данное файлу проекта (⬇️ или открытый 📂); пусто — имя открытого пресета */
+let givenName = '';
 /** JSON показанного состояния: законченная правка того же, что уже показано кадрами, не пересобирает */
 let shown = '';
 
@@ -100,6 +106,8 @@ function show(): void {
   const json = JSON.stringify(state);
   if (json === shown) return;
   shown = json;
+  // модель изменилась: строка о прошлом событии (отказ файла, сбой) больше не о ней
+  notice = null;
   params = buildParamsOf(state);
   rebuildPreview();
   scheduleFullBuild();
@@ -179,7 +187,7 @@ let storageStatus: StorageStatus = { project: 'ok', preset: null };
 function drawBanner(): void {
   renderBanner(storageNote, storageStatus, {
     t: tr,
-    // у MathSculpt пока нет файла проекта: строка о модели не показывается (project всегда ok)
+    // что делать, когда браузер не хранит работу: сохранить её файлом (⬇️), слова кита
     advice: { blocked: 'kit.storage.advice.file', full: 'kit.storage.advice.fileFull' },
     onDismiss: () => {
       storageStatus = { ...storageStatus, preset: null };
@@ -213,6 +221,11 @@ function currentName(): string {
   return '';
 }
 
+/** Имя проекта: данное файлу, иначе имя открытого пресета. */
+function projectName(): string {
+  return givenName || currentName();
+}
+
 function presetState(ref: PresetRef): AppState | undefined {
   const id = ref.slice(2);
   return ref.startsWith('b:') ? presetById(id)?.build() : userPresets.find((preset) => preset.id === id)?.state;
@@ -224,7 +237,7 @@ function currentStatus(): ReturnType<typeof presetStatus> {
 }
 
 function refreshPresetButton(): void {
-  presetBtn.textContent = currentName() || t('kit.topbar.presets');
+  presetBtn.textContent = projectName() || t('kit.topbar.presets');
   presetBtn.classList.toggle('changed', currentStatus() === 'changed');
   if (presetsDialog.isOpen()) drawPresetList();
 }
@@ -240,6 +253,7 @@ function drawPresetList(): void {
       const state = presetState(ref);
       if (!state) return;
       presetRef = ref;
+      givenName = '';
       presetsDialog.close();
       // открыть пресет — один шаг отмены
       edit(state, true);
@@ -268,18 +282,47 @@ newBtn.addEventListener('click', () => {
   const blank = presetById(BLANK_ID);
   if (!blank) return;
   presetRef = makePresetRef('b', BLANK_ID);
+  givenName = '';
   edit(blank.build(), true);
 });
 
 saveBtn.addEventListener('click', () => {
-  const name = window.prompt(t('presets.prompt'), currentName() || nextPresetName(userPresets, autoPresetPrefixes(), t('presets.auto')));
+  const name = window.prompt(t('presets.prompt'), projectName() || nextPresetName(userPresets, autoPresetPrefixes(), t('presets.auto')));
   if (!name) return;
   const saved = savePresetAs(userPresets, name, history.state);
   // пресет остаётся в списке до перезагрузки, даже если браузер его не сохранил
   userPresets = saved.list;
   presetRef = makePresetRef('u', saved.id);
+  givenName = '';
   writePresets('save');
   refreshPresetButton();
+});
+
+// --- модель файлом: ⬇️ сохранить, 📂 открыть (`core/projectFile` кита) ---
+const FILE_REFUSALS = { broken: 'kit.file.broken', foreign: 'kit.file.foreign', newer: 'kit.file.newer' } as const;
+
+fileSaveBtn.addEventListener('click', () => {
+  const name = window.prompt(t('file.prompt'), projectName());
+  if (name === null) return;
+  givenName = name.trim();
+  download(projectFile(givenName), encodeProject(givenName, history.state), 'application/json');
+  refreshPresetButton();
+});
+
+fileOpenBtn.addEventListener('click', () => {
+  void pickFile('.json,application/json').then(async (file) => {
+    if (!file) return;
+    const decoded = decodeProject(await file.text());
+    if (!decoded.ok) {
+      // отказ словами кита: чужой файл не ложится дефолтами поверх работы
+      showNotice(FILE_REFUSALS[decoded.reason]);
+      return;
+    }
+    presetRef = '';
+    givenName = decoded.name;
+    // открыть файл — один шаг отмены
+    edit(decoded.state, true);
+  });
 });
 
 // --- сборка: превью в главном потоке + полная сетка в воркере (очередь кита) ---
@@ -308,20 +351,37 @@ function messageLines(verdicts: readonly Verdict[]): { severity: Verdict['severi
 
 /** что показано в статусе и списке — чтобы перевести его при смене языка, не пересобирая */
 let lastReport: Parameters<typeof showReport> | null = null;
+/** вердикты показанного меша */
+let verdicts: Verdict[] = [];
+/**
+ * Строка о только что случившемся — отказ файла, сбой воркера, остановленная
+ * выгрузка: первой в списке, пока модель не изменится. Иначе её стёр бы отчёт
+ * полной сборки, что закончится секундой позже. Ключ — чтобы перевести заново.
+ */
+let notice: { key: Key; params?: Params } | null = null;
+
+function drawMessages(): void {
+  const lines = messageLines(verdicts);
+  renderMessages(messages, notice ? [{ severity: 'bad', text: t(notice.key, notice.params), code: notice.key }, ...lines] : lines);
+}
+
+function showNotice(key: Key, params?: Params): void {
+  notice = { key, params };
+  drawMessages();
+}
 
 function showReport(report: MeshReport, overhang: number, buildMs: number, resolution: number | null): void {
   lastReport = [report, overhang, buildMs, resolution];
   status.textContent = statusText(report, params, { resolution, ms: buildMs }, tr);
   // для скриптов: какая сборка показана, на любом языке
   status.dataset.build = resolution === null ? 'preview' : 'full';
-  renderMessages(messages, messageLines(meshVerdicts(report, params, overhang)));
+  verdicts = meshVerdicts(report, params, overhang);
+  drawMessages();
 }
 
-/** Сбой воркера — строкой в списке сообщений. */
+/** Сбой воркера — строкой сверху списка сообщений. */
 function failed(key: 'build.failed' | 'export.failed', error: unknown): void {
-  renderMessages(messages, [
-    { severity: 'bad', text: t(key, { error: error instanceof Error ? error.message : String(error) }), code: key },
-  ]);
+  showNotice(key, { error: error instanceof Error ? error.message : String(error) });
 }
 
 function startFullBuild(): void {
@@ -379,12 +439,13 @@ async function exportStl(): Promise<void> {
       })
     )?.result;
   if (!result) return;
-  const verdicts = meshVerdicts(result.report, buildParamsOf(state), result.overhang);
-  if (verdicts.some((verdict) => verdict.severity === 'bad')) {
-    renderMessages(messages, [{ severity: 'bad', text: t('export.blocked'), code: 'export.blocked' }, ...messageLines(verdicts)]);
+  const gate = meshVerdicts(result.report, buildParamsOf(state), result.overhang);
+  if (gate.some((verdict) => verdict.severity === 'bad')) {
+    verdicts = gate;
+    showNotice('export.blocked');
     return;
   }
-  const name = currentName() || state.profile;
+  const name = projectName() || state.profile;
   // меш уже в миллиметрах; имя файла сохраняет буквы любого письма: «Классическая ваза» → классическая-ваза.stl
   download(stlFileName(name, 'mathsculpt'), encodeSTL(result.mesh, { brand: 'MathSculpt', name }), 'model/stl');
 }

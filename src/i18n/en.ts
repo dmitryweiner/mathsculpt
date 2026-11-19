@@ -66,6 +66,7 @@ export const en = {
   'presets.auto': 'Preset',
   'presets.prompt': 'Preset name:',
   'presets.title': 'Presets',
+  'file.prompt': 'Project name:',
 
   // --- the Shape card: the carrier, the mode, the wall, the height ---
   'shape.profile': 'Profile',

@@ -14,7 +14,8 @@ zoom; the grid under it is a 200 × 200 mm printer bed with 1 cm cells.
 The top bar holds the presets button (it shows the open preset's name, with
 ● once you have changed the model), 📄 to start a new model from the
 defaults (one undo step: ↶ brings the previous one back), 💾 to save the
-model as a preset of yours, ↶ ↷ to undo and redo, and 🌐 for the language.
+model as a preset of yours, 📂 and ⬇️ to open and save the model as a file,
+↶ ↷ to undo and redo, and 🌐 for the language.
 
 ## The panel, top to bottom
 
@@ -99,6 +100,14 @@ top bar says so.
 Every finished edit — a released slider, a chosen option, a ticked box,
 a preset opened — is one undo step: ↶ ↷, or Ctrl/⌘+Z and Ctrl/⌘+Shift+Z
 (Ctrl+Y) on any keyboard layout.
+
+## The model as a file
+
+⬇️ saves the model as a project file, `<name>.mathsculpt.json`, under the
+name you give it; the name then shows on the presets button. 📂 opens such a
+file back — on another machine or browser too — as one undo step. A file
+of another app, a broken one or one from a newer version of MathSculpt is
+refused with the reason in the messages, and the model stays as it was.
 
 ## Languages
 

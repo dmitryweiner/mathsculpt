@@ -100,7 +100,8 @@ All of them are on maker-kit's harness (`scripts/lib/harness.mjs`):
   `p_<card>_<key>`; `lfo<i>_<key>`, `route<i>_<key>`.
 - `scripts/smoke.mjs` — the browser smoke in the kit's steps, each on a fresh
   page: every profile, card and preset (through the kit's dialog) builds
-  watertight; undo/redo; 📄 New and its undo; 💾 + reload; open top and the wall; the worker's
+  watertight; undo/redo; 📄 New and its undo; 💾 + reload; the project file
+  (⬇️, 📂 back, a foreign file refused); open top and the wall; the worker's
   full build; profile-shape and Fourier cards; a modulation route and ∿; a
   real STL download, its height in mm; languages (ru-RU browser, 🌐, Hebrew
   mirrored, the choice kept); no sideways scroll; the phone sheet.
@@ -130,7 +131,7 @@ All of them are on maker-kit's harness (`scripts/lib/harness.mjs`):
   (`set(state, value)` gives a new one). A finished edit (`final` from the
   kit's controls: a released slider, a chosen option, −/+ let go) is one
   undo step; frames of a gesture are `live`. Opening a preset is one step.
-- Everything from outside (storage, a worker job) goes through
+- Everything from outside (storage, a project file, a worker job) goes through
   `sanitizeState`: unknown keys dropped, values clamped to the card schema's
   ranges, never throwing. The open preset is a `PresetRef` beside the
   history, not in the state.
@@ -159,8 +160,8 @@ Measured on an M-series Mac, 2026-11-19.
 
 | What | Cost |
 |---|---|
-| `npm run check` | ~3 s (437 tests) |
-| `npm run smoke` / `-- --preview` | ~40 s (14 steps; the preview builds first) |
+| `npm run check` | ~3 s (443 tests) |
+| `npm run smoke` / `-- --preview` | ~45 s (15 steps; the preview builds first) |
 | Preview 96×96 on the main thread | ≤ 25 ms (worst preset, Voronoi stone) |
 | Full build in the worker (from the job's arrival, with the checks) | 170 ms at 256², 712 ms at 512² (Voronoi stone); ~80 ms at 256² for the default vase |
 | Main chunk | ~655 KB (~173 KB gzip): three is most of it; the worker 44 KB |

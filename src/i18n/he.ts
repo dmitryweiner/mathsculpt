@@ -64,6 +64,7 @@ export const he: Record<Key, string> = {
   'presets.auto': 'תבנית',
   'presets.prompt': 'שם התבנית:',
   'presets.title': 'תבניות',
+  'file.prompt': 'שם הפרויקט:',
 
   // --- the Shape card ---
   'shape.profile': 'פרופיל',

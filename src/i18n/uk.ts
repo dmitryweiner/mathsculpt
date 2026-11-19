@@ -64,6 +64,7 @@ export const uk: Record<Key, string> = {
   'presets.auto': 'Пресет',
   'presets.prompt': 'Назва пресета:',
   'presets.title': 'Пресети',
+  'file.prompt': 'Назва проєкту:',
 
   // --- the Shape card ---
   'shape.profile': 'Профіль',

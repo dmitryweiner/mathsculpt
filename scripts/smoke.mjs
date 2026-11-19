@@ -175,6 +175,39 @@ await app.run(
       check(mine.includes('Smoke preset'), `my presets: ${JSON.stringify(mine)}`);
     });
 
+    // ⬇️ файл проекта и 📂 обратно: модель и данное имя; чужой JSON — отказ словами кита
+    await step('the project file: ⬇️ saves, 📂 opens it back, a foreign file is refused', async (page) => {
+      await page.locator('#presetBtn').click();
+      await page.locator('#presetList .preset-row[data-ref="b:gyroid-sphere"] .preset-pick').click();
+      await page.waitForTimeout(300);
+      page.once('dialog', (dialog) => dialog.accept('Smoke model'));
+      const file = await download(page, '#fileSaveBtn');
+      check(file.name === 'smoke-model.mathsculpt.json', `file name ${file.name}`);
+      const saved = JSON.parse(file.bytes.toString('utf8'));
+      check(
+        saved.app === 'mathsculpt' && saved.name === 'Smoke model' && saved.state.profile === 'sphere',
+        `file ${file.bytes.toString('utf8').slice(0, 120)}`,
+      );
+      await page.locator('#newBtn').click();
+      await page.waitForTimeout(300);
+      check((await page.locator('#shape_profile').inputValue()) === 'vase', '📄 did not reset the model');
+      const open = async (files) => {
+        const chooser = page.waitForEvent('filechooser');
+        await page.locator('#fileOpenBtn').click();
+        await (await chooser).setFiles(files);
+        await page.waitForTimeout(400);
+      };
+      await open(file.path);
+      check((await page.locator('#shape_profile').inputValue()) === 'sphere', 'the file did not open the sphere');
+      check(
+        (await page.locator('#presetBtn').textContent()).trim() === 'Smoke model',
+        `the button says "${await page.locator('#presetBtn').textContent()}"`,
+      );
+      await open({ name: 'other.json', mimeType: 'application/json', buffer: Buffer.from('{"app":"clayform","version":1,"state":{}}') });
+      check((await page.locator('#messages [data-code="kit.file.foreign"]').count()) === 1, 'a foreign file was not refused');
+      check((await page.locator('#shape_profile').inputValue()) === 'sphere', 'a foreign file changed the model');
+    });
+
     // открытый верх: wall=0 → оболочка, wall>0 → watertight-солид
     await step('open top: a shell, then a hollow vessel with a wall', async (page) => {
       await page.selectOption('#shape_caps', 'bottom');
