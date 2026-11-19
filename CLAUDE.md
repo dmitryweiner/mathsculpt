@@ -13,10 +13,17 @@ Existing helpers:
 - `scripts/snap.mjs` — single debug screenshot of the app. Flags:
   `--out <path>` (required), `--profile <id>`, `--preset <id>` (`gyroid-sphere`, …),
   `--hash <token>`, `--caps <both|bottom>`, `--wall <mm>`,
-  `--set <id>=<value>` (repeatable — set any input/slider by element id, e.g.
-  `--set p_profileShape_belly=0.6`), `--width`, `--height`, `--wait <ms>`,
-  `--full` (wait for the Web Worker full-res build). Auto-starts the dev
-  server, captures console/page errors, prints `#status`.
+  `--set <id>=<value>` (repeatable — a panel slider or select by its id, set
+  as released; a folded card is opened first; e.g.
+  `--set p_profileShape_belly=0.6`), `--eval <js>` (repeatable — prints the
+  value of an expression in the page before the shot: where an element is,
+  what it holds; it may act too, e.g.
+  `--eval "document.getElementById('addRouteBtn').click()"`), `--width`,
+  `--height`, `--wait <ms>`, `--full` (wait for the Web Worker full-res
+  build). Auto-starts the dev server, captures console/page errors, prints
+  `#status`. Ids: `shape_profile`, `shape_caps`, `shape_wall`,
+  `shape_height`, `export_resolution`; a card's switch `p_<card>_on`, its
+  parameters `p_<card>_<key>`; `lfo<i>_<key>`, `route<i>_<key>`.
 - `scripts/smoke.mjs` — headless smoke over every profile/card/preset + worker,
   modulation, wall/open-top, profile-shape, share round-trip. `--preview` runs
   the prod build.

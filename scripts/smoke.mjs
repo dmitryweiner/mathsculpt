@@ -67,25 +67,44 @@ await page.goto(BASE);
 await page.waitForTimeout(600);
 
 // каждый профиль строится, статус — watertight
-const ids = await page.$$eval('#profile option', (els) => els.map((e) => e.value));
+const ids = await page.$$eval('#shape_profile option', (els) => els.map((e) => e.value));
 for (const id of ids) {
   ctxLabel = `profile:${id}`;
-  await page.selectOption('#profile', id);
+  await page.selectOption('#shape_profile', id);
   await page.waitForTimeout(250);
   const status = await page.locator('#status').textContent();
   if (!status.includes('watertight ✓')) errors.push(`[${ctxLabel}] status="${status}"`);
 }
 console.log(`profiles checked: ${ids.length}`);
 
-// каждая карточка (смещения + деформеры) включается и выключается без ошибок
-const cardIds = await page.$$eval('[id^="en_"]', (els) => els.map((e) => e.id.replace('en_', '')));
+/** Раскрывает свёрнутую карточку, где лежит контрол: в свёрнутой его не видно. */
+async function reveal(id) {
+  await page.evaluate((target) => {
+    const card = document.getElementById(target)?.closest('.fcard.collapsed');
+    card?.querySelector(':scope > .fcard-head')?.click();
+  }, id);
+}
+
+/** Ползунок как отпущенный: кадр (input) и законченная правка (change) — шаг отмены. */
+async function setSlider(id, value) {
+  await reveal(id);
+  const slider = page.locator(`#${id}`);
+  await slider.fill(value);
+  await slider.dispatchEvent('input');
+  await slider.dispatchEvent('change');
+}
+
+// каждая карточка (смещения + деформеры) включается и выключается без ошибок;
+// галочка — первой строкой внутри карточки (#p_<карточка>_on)
+const cardIds = await page.$$eval('#displaceCards .fcard, #deformCards .fcard', (els) => els.map((e) => e.id.replace('card_', '')));
 for (const id of cardIds) {
   ctxLabel = `card:${id}`;
-  await page.locator(`#en_${id}`).click();
+  await reveal(`p_${id}_on`);
+  await page.locator(`#p_${id}_on`).click();
   await page.waitForTimeout(150);
   const status = await page.locator('#status').textContent();
   if (!status.includes('watertight ✓')) errors.push(`[${ctxLabel}] status="${status}"`);
-  await page.locator(`#en_${id}`).click();
+  await page.locator(`#p_${id}_on`).click();
   await page.waitForTimeout(80);
 }
 console.log(`cards toggled: ${cardIds.length}`);
@@ -107,10 +126,7 @@ await page.goto(BASE);
 await page.waitForTimeout(400);
 const amp = page.locator('#p_ripples_amp');
 const ampBefore = await amp.inputValue();
-await amp.fill('0.08');
-await amp.dispatchEvent('input');
-// шагом правка становится, когда стихнет на 300 мс
-await page.waitForTimeout(450);
+await setSlider('p_ripples_amp', '0.08');
 await page.locator('#undoBtn').click();
 await page.waitForTimeout(150);
 if ((await amp.inputValue()) !== ampBefore) errors.push(`[undo] amp=${await amp.inputValue()}, expected ${ampBefore}`);
@@ -133,22 +149,20 @@ else console.log('save preset ok');
 
 // open top + слайдер толщины стенки: wall=0 → оболочка, wall>0 → watertight-солид
 ctxLabel = 'wall';
-await page.selectOption('#caps', 'bottom');
+await page.selectOption('#shape_caps', 'bottom');
 await page.waitForTimeout(200);
-if (await page.locator('#wallRow').isHidden()) errors.push('[wall] slider hidden in open top');
-await page.locator('#wallMm').fill('0');
-await page.locator('#wallMm').dispatchEvent('input');
+if (await page.locator('#shape_wall').isHidden()) errors.push('[wall] slider hidden in open top');
+await setSlider('shape_wall', '0');
 await page.waitForTimeout(300);
 const shellStatus = await page.locator('#status').textContent();
 if (!shellStatus.includes('open top')) errors.push(`[wall0] status="${shellStatus}" (ожидалась оболочка)`);
-await page.locator('#wallMm').fill('3');
-await page.locator('#wallMm').dispatchEvent('input');
+await setSlider('shape_wall', '3');
 await page.waitForTimeout(300);
 const wallStatus = await page.locator('#status').textContent();
 if (!wallStatus.includes('watertight ✓')) errors.push(`[wall] status="${wallStatus}" (ожидался watertight-солид)`);
-await page.selectOption('#caps', 'both');
+await page.selectOption('#shape_caps', 'both');
 await page.waitForTimeout(200);
-if (await page.locator('#wallRow').isVisible()) errors.push('[wall] slider visible in solid mode');
+if (await page.locator('#shape_wall').isVisible()) errors.push('[wall] slider visible in solid mode');
 
 ctxLabel = 'share';
 await page.locator('#shareBtn').click();
@@ -178,18 +192,17 @@ else console.log('worker full build ok');
 // настройка формы профиля: карточка видна для пресета, скрыта для фигуры,
 // belly>0 меняет геометрию
 ctxLabel = 'profileShape';
-await page.selectOption('#profile', 'vase');
+await page.selectOption('#shape_profile', 'vase');
 await page.waitForTimeout(250);
 if (await page.locator('#card_profileShape').isHidden()) errors.push('[profileShape] card hidden for preset');
-await page.locator('#p_profileShape_belly').fill('0.6');
-await page.locator('#p_profileShape_belly').dispatchEvent('input');
+await setSlider('p_profileShape_belly', '0.6');
 await page.waitForTimeout(250);
 const psStatus = await page.locator('#status').textContent();
 if (!psStatus.includes('watertight ✓')) errors.push(`[profileShape] status="${psStatus}"`);
 
 // Фурье-профиль: карточка появляется, форма профиля скрыта, меш watertight
 ctxLabel = 'fourier';
-await page.selectOption('#profile', 'fourier');
+await page.selectOption('#shape_profile', 'fourier');
 await page.waitForTimeout(300);
 const fourierVisible = await page.locator('#card_fourier').isVisible();
 if (!fourierVisible) errors.push('[fourier] card not visible');
@@ -199,7 +212,7 @@ if (!fst.includes('watertight ✓')) errors.push(`[fourier] status="${fst}"`);
 
 // матрица модуляции: добавить маршрут → бейдж ∿ на слайдере цели
 ctxLabel = 'mod';
-await page.locator('#modToggle').click();
+await page.locator('#card_mod .fcard-head').click();
 await page.waitForTimeout(150);
 await page.locator('#addRouteBtn').click();
 await page.waitForTimeout(300);

@@ -26,9 +26,9 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
 await page.goto(BASE);
 await page.waitForTimeout(600);
 
-const ids = await page.$$eval('#profile option', (els) => els.map((e) => e.value));
+const ids = await page.$$eval('#shape_profile option', (els) => els.map((e) => e.value));
 for (const id of ids) {
-  await page.selectOption('#profile', id);
+  await page.selectOption('#shape_profile', id);
   await page.waitForTimeout(300);
   await page.screenshot({ path: `shots/${id}.png` });
   console.log(`shots/${id}.png`);
