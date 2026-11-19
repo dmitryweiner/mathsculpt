@@ -123,7 +123,8 @@ for (const v of presetValues) {
   await page.waitForTimeout(300);
   const status = await page.locator('#status').textContent();
   if (!status.includes('watertight ✓')) errors.push(`[${ctxLabel}] status="${status}"`);
-  if ((await page.locator('#presetBtn').textContent()).trim() !== name) errors.push(`[${ctxLabel}] preset button: ${await page.locator('#presetBtn').textContent()}`);
+  if ((await page.locator('#presetBtn').textContent()).trim() !== name)
+    errors.push(`[${ctxLabel}] preset button: ${await page.locator('#presetBtn').textContent()}`);
 }
 console.log(`presets checked: ${presetValues.length}`);
 
