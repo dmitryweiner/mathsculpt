@@ -228,6 +228,30 @@ const download = await downloadP;
 if (!download) errors.push('[export] no download event');
 else console.log('export ok:', download.suggestedFilename());
 
+// языки: браузер на русском открывает русский; 🌐 переключает, выбор переживает
+// перезагрузку; иврит зеркалит страницу (панель справа)
+ctxLabel = 'lang';
+const ruContext = await browser.newContext({ locale: 'ru-RU', viewport: { width: 1280, height: 820 } });
+const ru = await ruContext.newPage();
+attach(ru);
+await ru.goto(BASE);
+await ru.waitForTimeout(600);
+if ((await ru.locator('html').getAttribute('lang')) !== 'ru')
+  errors.push(`[lang] ru-RU browser: lang=${await ru.locator('html').getAttribute('lang')}`);
+if ((await ru.locator('#exportBtn').textContent()).trim() !== 'Выгрузить STL')
+  errors.push(`[lang] ru: export button "${await ru.locator('#exportBtn').textContent()}"`);
+if ((await ru.locator('label[for="p_ripples_amp"]').textContent()) !== 'Амплитуда') errors.push('[lang] ru: the panel is not in Russian');
+await ru.selectOption('.lang-field select', 'he');
+await ru.waitForTimeout(300);
+if ((await ru.locator('html').getAttribute('dir')) !== 'rtl') errors.push('[lang] he: the page is not right to left');
+const heBox = await ru.locator('#panel').boundingBox();
+if (!heBox || heBox.x < 640) errors.push(`[lang] he: the panel is not on the right (x=${heBox?.x})`);
+await ru.reload();
+await ru.waitForTimeout(600);
+if ((await ru.locator('html').getAttribute('lang')) !== 'he') errors.push('[lang] the choice did not survive a reload');
+await ruContext.close();
+console.log('languages ok');
+
 // телефон: панель — нижний лист кита; ручка закрывает, «Settings» открывает
 ctxLabel = 'phone';
 const phone = await browser.newPage({ viewport: { width: 390, height: 780 } });
