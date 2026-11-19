@@ -12,6 +12,7 @@ import 'maker-kit/styles/kit.css';
 import './style.css';
 import type { MeshReport } from 'maker-kit/3d/validate';
 import { validateMesh } from 'maker-kit/3d/validate';
+import { stlFileName } from 'maker-kit/3d/stl';
 import { History } from 'maker-kit/core/history';
 import type { JobProgress } from 'maker-kit/core/progress';
 import type { PresetRef } from 'maker-kit/core/presets';
@@ -20,11 +21,13 @@ import type { StorageWrite } from 'maker-kit/core/storage';
 import { browserStorage, loadRecord, saveRecord } from 'maker-kit/core/storage';
 import type { StorageStatus } from 'maker-kit/ui/banner';
 import { renderBanner } from 'maker-kit/ui/banner';
+import { restoreCards, snapshotCards } from 'maker-kit/ui/card';
 import type { Control } from 'maker-kit/ui/controls';
 import { renderControls } from 'maker-kit/ui/controls';
 import { el } from 'maker-kit/ui/dom';
 import { download } from 'maker-kit/ui/files';
 import { bindHistory } from 'maker-kit/ui/historyKeys';
+import { createLanguagePicker } from 'maker-kit/ui/languagePicker';
 import { renderMessages } from 'maker-kit/ui/messageList';
 import { createModal } from 'maker-kit/ui/modal';
 import { renderPresetList } from 'maker-kit/ui/presetList';
@@ -38,6 +41,7 @@ import { encodeSTL } from './geo/stl';
 import { createScene } from './render/scene';
 import { drawProfileGraph } from './ui/graph';
 import { renderPanel } from './ui/panel';
+import type { PanelHandle } from './ui/panel';
 import type { Verdict } from './ui/report';
 import { meshVerdicts, statusText } from './ui/report';
 import { applyStaticText } from './ui/staticText';
@@ -47,7 +51,7 @@ import { PRESETS, presetById } from './state/presets';
 import type { SculptPreset } from './state/userPresets';
 import { savePresetAs, userPresetsRecord } from './state/userPresets';
 import type { Key } from './i18n';
-import { autoPresetPrefixes, hasKey, t, tDynamic, tm, tr } from './i18n';
+import { LANGS, autoPresetPrefixes, hasKey, initLang, lang, onLangChange, setLang, t, tDynamic, tm, tr } from './i18n';
 
 const PREVIEW_N = 96;
 const HISTORY_LIMIT = 100;
@@ -63,6 +67,8 @@ const storageNote = el('storageNote', HTMLDivElement);
 const canvas = el('view', HTMLCanvasElement);
 const graphCanvas = el('profileGraph', HTMLCanvasElement);
 
+// язык: сохранённый выбор → языки браузера → английский
+initLang();
 applyStaticText(document);
 
 // --- состояние: начало истории, а не шаг ---
@@ -110,33 +116,37 @@ const RESOLUTION_ROWS: readonly Control<BuildSettings, Key>[] = [
     set: (settings, resolution) => ({ ...settings, resolution }),
   },
 ];
-renderControls(el('exportControls', HTMLDivElement), RESOLUTION_ROWS, {
-  read: () => buildSettings,
-  change: (next) => {
-    buildSettings = next;
-    scheduleFullBuild();
-  },
-  idPrefix: 'export',
-  t: tr,
-});
+const exportControls = el('exportControls', HTMLDivElement);
+function drawResolution(): void {
+  renderControls(exportControls, RESOLUTION_ROWS, {
+    read: () => buildSettings,
+    change: (next) => {
+      buildSettings = next;
+      scheduleFullBuild();
+    },
+    idPrefix: 'export',
+    t: tr,
+  });
+}
+drawResolution();
 
 function fullResolution(): number {
   return Number.parseInt(buildSettings.resolution, 10) || 256;
 }
 
-// --- панель: лист на телефоне ---
-const panel = renderPanel(
-  {
-    shape: el('shapeControls', HTMLDivElement),
-    carriers: el('carrierCards', HTMLDivElement),
-    displace: el('displaceCards', HTMLDivElement),
-    deform: el('deformCards', HTMLDivElement),
-    mod: el('modCard', HTMLDivElement),
-  },
-  { read: () => history.state, change: edit, t: tr },
-);
+// --- панель: лист на телефоне; после смены языка рисуется заново ---
+const panelHosts = {
+  shape: el('shapeControls', HTMLDivElement),
+  carriers: el('carrierCards', HTMLDivElement),
+  displace: el('displaceCards', HTMLDivElement),
+  deform: el('deformCards', HTMLDivElement),
+  mod: el('modCard', HTMLDivElement),
+};
+const panelEl = el('panel', HTMLElement);
+const drawPanel = (): PanelHandle => renderPanel(panelHosts, { read: () => history.state, change: edit, t: tr });
+let panel = drawPanel();
 setupSheet({
-  panel: el('panel', HTMLElement),
+  panel: panelEl,
   button: el('sheetOpen', HTMLButtonElement),
   close: el('sheetClose', HTMLButtonElement),
   view: el('viewWrap', HTMLElement),
@@ -294,7 +304,11 @@ function messageLines(verdicts: readonly Verdict[]): { severity: Verdict['severi
   return verdicts.map((verdict) => ({ severity: verdict.severity, text: tm(verdict.message), code: verdict.message.code }));
 }
 
+/** что показано в статусе и списке — чтобы перевести его при смене языка, не пересобирая */
+let lastReport: Parameters<typeof showReport> | null = null;
+
 function showReport(report: MeshReport, overhang: number, buildMs: number, resolution: number | null): void {
+  lastReport = [report, overhang, buildMs, resolution];
   status.textContent = statusText(report, params, { resolution, ms: buildMs }, tr);
   renderMessages(messages, messageLines(meshVerdicts(report, params, overhang)));
 }
@@ -375,11 +389,23 @@ exportBtn.addEventListener('click', () => {
   }
   const zExtent = report.bbox.max[2] - report.bbox.min[2];
   const name = currentName() || params.profile;
-  download(
-    `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.stl`,
-    encodeSTL(mesh, { scale: history.state.heightMm / zExtent, name }),
-    'model/stl',
-  );
+  // имя файла сохраняет буквы любого письма: «Классическая ваза» → классическая-ваза.stl
+  download(stlFileName(name, 'mathsculpt'), encodeSTL(mesh, { scale: history.state.heightMm / zExtent, name }), 'model/stl');
+});
+
+// --- язык: 🌐 в шапке; смена перерисовывает всё, где есть слова ---
+const languagePicker = createLanguagePicker(el('topbar', HTMLElement), { locales: LANGS, current: lang(), t: tr, onChange: setLang });
+onLangChange((next) => {
+  languagePicker.set(next);
+  applyStaticText(document);
+  const folded = snapshotCards(panelEl);
+  panel = drawPanel();
+  restoreCards(panelEl, folded);
+  drawResolution();
+  progress.refresh();
+  drawBanner();
+  refreshPresetButton();
+  if (lastReport) showReport(...lastReport);
 });
 
 // --- старт ---

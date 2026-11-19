@@ -9,7 +9,7 @@
 //   node scripts/snap.mjs --width 390 --height 780 --out shots/mobile.png
 //   node scripts/snap.mjs --profile vase --set p_profileShape_belly=0.6 --out shots/x.png
 //
-// Флаги: --profile <id>, --preset <id> (src/state/presets.ts), --caps <both|bottom>,
+// Флаги: --lang <en|ru|uk|he> (язык браузера), --profile <id>, --preset <id> (src/state/presets.ts), --caps <both|bottom>,
 //        --wall <mm>, --set <id>=<value> (повторяемый — любой ползунок или
 //        селект панели по id, свёрнутая карточка раскрывается),
 //        --width, --height, --wait <ms> (доп. пауза), --full (ждать полной
@@ -23,7 +23,7 @@ import { dirname } from 'node:path';
 import { chromium } from 'playwright';
 
 const args = process.argv.slice(2);
-const VALUE_FLAGS = new Set(['profile', 'preset', 'caps', 'wall', 'width', 'height', 'wait', 'out']);
+const VALUE_FLAGS = new Set(['lang', 'profile', 'preset', 'caps', 'wall', 'width', 'height', 'wait', 'out']);
 const flags = new Map();
 const sets = []; // --set id=value (повторяемый): выставить любой input/slider
 const evals = []; // --eval <js> (повторяемый): напечатать значение выражения на странице
@@ -68,8 +68,11 @@ if (!(await serverUp())) {
 
 const errors = [];
 const browser = await chromium.launch();
+// --lang: язык браузера (en, ru, uk, he) — приложение выбирает по нему, как у человека
+const LOCALES = { en: 'en-US', ru: 'ru-RU', uk: 'uk-UA', he: 'he-IL' };
 const page = await browser.newPage({
   viewport: { width: Number(flags.get('width')) || 1280, height: Number(flags.get('height')) || 820 },
+  locale: LOCALES[flags.get('lang')] ?? 'en-US',
 });
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => {

@@ -11,7 +11,8 @@ Extend an existing script with a new flag rather than cloning it.
 Existing helpers:
 
 - `scripts/snap.mjs` — single debug screenshot of the app. Flags:
-  `--out <path>` (required), `--profile <id>`, `--preset <id>` (`gyroid-sphere`, …),
+  `--out <path>` (required), `--lang <en|ru|uk|he>` (the browser's language;
+  the app picks by it), `--profile <id>`, `--preset <id>` (`gyroid-sphere`, …),
   `--caps <both|bottom>`, `--wall <mm>`,
   `--set <id>=<value>` (repeatable — a panel slider or select by its id, set
   as released; a folded card is opened first; e.g.
@@ -26,7 +27,8 @@ Existing helpers:
   parameters `p_<card>_<key>`; `lfo<i>_<key>`, `route<i>_<key>`.
 - `scripts/smoke.mjs` — headless smoke over every profile/card/preset + worker,
   modulation, wall/open-top, profile-shape, presets through the kit's dialog,
-  undo/redo, 💾 + reload, the phone sheet. `--preview` runs the prod build.
+  undo/redo, 💾 + reload, languages (ru-RU browser, 🌐, Hebrew mirrored, the
+  choice kept), the phone sheet. `--preview` runs the prod build.
 - `scripts/shot.mjs` — one screenshot per profile into `./shots`.
 
 When a new one-off check is needed more than once, add it to `snap.mjs`/`smoke.mjs`
