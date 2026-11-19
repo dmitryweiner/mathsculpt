@@ -12,10 +12,10 @@
 // кадр `smoke-fail.png` (в --shots или во временной папке). Браузер — в
 // en-US: проверки читают английский текст; языки проверяет свой шаг.
 
-import { mkdirSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { binaryStl, check, download, horizontalOverflow, launch, parseArgs, settled, VIEWPORTS } from './lib/harness.mjs';
+import { binaryStl, check, download, horizontalOverflow, launch, offline, parseArgs, settled, VIEWPORTS } from './lib/harness.mjs';
 
 const flags = parseArgs(process.argv.slice(2), ['shots']);
 const shotsDir = flags.get('shots');
@@ -69,6 +69,21 @@ async function setSlider(page, id, value) {
   await slider.fill(value);
   await slider.dispatchEvent('input');
   await slider.dispatchEvent('change');
+}
+
+/**
+ * Обещание или провал через `ms`: `offline()` кита ждёт
+ * `serviceWorker.ready` без срока (известная беда кита, его plans/PLAN.md),
+ * и сборка, чей воркер не встал, повесила бы смоук вместо провала.
+ */
+function within(promise, ms, what) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${what}: no answer in ${ms / 1000} s`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
 }
 
 /** Высота модели в STL, мм: размах z по вершинам двоичного файла. */
@@ -346,6 +361,55 @@ await app.run(
       },
       { viewport: VIEWPORTS.phone },
     );
+
+    // только сборка: у dev-сервера нет сервис-воркера (_conventions/pwa.md)
+    if (flags.has('preview')) {
+      // офлайн после первого визита: страница, воркер сборки и выгрузка STL — из кэша
+      await app.step('works offline after the first visit: the page, the worker, an STL', async () => {
+        const { page, context } = await within(
+          offline(app, { locale: 'en-US', viewport: VIEWPORTS.desktop, ready: (p) => p.waitForSelector('#status[data-build]') }),
+          30000,
+          'the service worker never became ready',
+        );
+        try {
+          await setSlider(page, 'shape_height', '100');
+          await page.waitForSelector('#status[data-build="full"]', { timeout: 15000 });
+          const file = await download(page, '#exportBtn');
+          check((binaryStl(file.bytes)?.triangles ?? 0) > 0, `no STL offline: ${file.bytes.length} bytes`);
+        } finally {
+          await context.close();
+        }
+      });
+
+      // новая версия доходит до открытой страницы: изменённый sw.js — так выглядит деплой для браузера
+      await app.step('a new deploy reloads a page already open', async () => {
+        const { page, context } = await app.open({ locale: 'en-US', viewport: VIEWPORTS.desktop });
+        try {
+          await within(
+            page.evaluate(() => navigator.serviceWorker.ready.then(() => true)),
+            30000,
+            'the service worker never became ready',
+          );
+          await page.evaluate(() => {
+            window.oldPage = true;
+          });
+          const worker = 'dist/sw.js';
+          const original = readFileSync(worker, 'utf8');
+          appendFileSync(worker, `\n// deploy ${Date.now()}\n`);
+          try {
+            const reloaded = page.waitForEvent('load', { timeout: 10000 }).catch(() => null);
+            // что делает телефон, когда человек возвращается на усыплённую страницу
+            await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+            check((await reloaded) !== null, 'the open page never switched to the new version');
+            check((await page.evaluate(() => window.oldPage)) === undefined, 'the page was not reloaded');
+          } finally {
+            writeFileSync(worker, original);
+          }
+        } finally {
+          await context.close();
+        }
+      });
+    }
   },
   `smoke passed (${flags.has('preview') ? 'preview' : 'dev'})`,
 );
