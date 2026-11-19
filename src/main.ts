@@ -303,6 +303,8 @@ let lastReport: Parameters<typeof showReport> | null = null;
 function showReport(report: MeshReport, overhang: number, buildMs: number, resolution: number | null): void {
   lastReport = [report, overhang, buildMs, resolution];
   status.textContent = statusText(report, params, { resolution, ms: buildMs }, tr);
+  // для скриптов: какая сборка показана, на любом языке
+  status.dataset.build = resolution === null ? 'preview' : 'full';
   renderMessages(messages, messageLines(meshVerdicts(report, params, overhang)));
 }
 
