@@ -113,6 +113,15 @@ file back — on another machine or browser too — as one undo step. A file
 of another app, a broken one or one from a newer version of MathSculpt is
 refused with the reason in the messages, and the model stays as it was.
 
+## Offline and as an app
+
+After the first visit MathSculpt works with no network: the page, the
+full build and the STL export all come from the browser's cache. The
+browser can install it as an app (Add to Home Screen, Install). A new
+version arrives on its own: when you return to the page it checks for an
+update and reloads to it — the model is kept in the browser, so only the
+undo history is lost.
+
 ## Languages
 
 English, Russian, Ukrainian and Hebrew. The app opens in your browser's

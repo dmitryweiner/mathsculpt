@@ -55,7 +55,8 @@ npm run check     # tsc (TypeScript 7) + oxlint --type-aware (bans `as` casts) +
 npm run format    # prettier --write (not *.md and golden: .prettierignore)
 npm run smoke     # browser smoke (dev :5287); --preview rebuilds and checks the prod build (:4287)
 npm run shot      # profile screenshots → ./shots
-npm run build     # production build → ./dist
+npm run build     # production build → ./dist (with sw.js)
+npm run icons     # the PWA's PNG icons from public/icon.svg
 ```
 
 The lint is oxlint (`.oxlintrc.json`): typescript-eslint does not support
@@ -105,17 +106,35 @@ All of them are on maker-kit's harness (`scripts/lib/harness.mjs`):
   foreign file refused); open top and the wall; the worker's
   full build; profile-shape and Fourier cards; a modulation route and ∿; a
   real STL download, its height in mm; languages (ru-RU browser, 🌐, Hebrew
-  mirrored, the choice kept); no sideways scroll; the phone sheet.
+  mirrored, the choice kept); no sideways scroll; the phone sheet; with
+  `--preview` also offline after a first visit (the page, the worker, an
+  STL from the cache) and a new `sw.js` reloading an open page.
   `--preview` rebuilds and checks the production build; `--shots <dir>`
   saves a frame per step. A failed step names itself and leaves
   `smoke-fail.png` (in `--shots` or the temp dir).
 - `scripts/shot.mjs` — one screenshot per profile into `./shots` (`--out <dir>`).
+- `scripts/icons.mjs` — `npm run icons`: the PWA's PNG icons (192, 512, a
+  maskable 512, the 180 apple-touch-icon) from `public/icon.svg` in
+  Chromium; the SVG is the only source (the template's script).
 - `scripts/lib/harness.mjs` — the kit's harness on ports 5287 (dev) and 4287
   (preview) with `--strictPort`: 5173 is every project's default, and a
   stale server of another project there would be tested by mistake. With
   `--preview` it builds first, and a busy preview port is an error.
   `PLAYWRIGHT_BROWSER` gives a chromium path where Playwright misses its
   own.
+
+## Offline (PWA)
+
+The app is a PWA (`_conventions/pwa.md`, the template's pieces in Case
+Constructor's variant): `src/sw-plugin.ts` writes `dist/sw.js`, which
+precaches the build and `public/` (the worker chunk included) under the
+cache `mathsculpt-<hash>` (the package name: every app on the
+`github.io` origin has its own), `skipWaiting` and `clients.claim`.
+`src/pwa.ts` registers it in the build only, asks for an update on every
+return to the page and reloads it on `controllerchange` — the model is
+kept in the browser (`mathsculpt_project`), so a reload loses only the
+undo history. `public/manifest.webmanifest`; `public/icon.svg` is the only
+source of the icons.
 
 ## Architectural invariants
 
@@ -164,8 +183,8 @@ Measured on an M-series Mac, 2026-11-19.
 
 | What | Cost |
 |---|---|
-| `npm run check` | ~3 s (447 tests) |
-| `npm run smoke` / `-- --preview` | ~45 s (17 steps; the preview builds first) |
+| `npm run check` | ~3 s (464 tests) |
+| `npm run smoke` / `-- --preview` | ~45 s (17 steps; the preview builds first and adds offline and the update) |
 | Preview 96×96 on the main thread | ≤ 25 ms (worst preset, Voronoi stone) |
 | Full build in the worker (from the job's arrival, with the checks) | 170 ms at 256², 712 ms at 512² (Voronoi stone); ~80 ms at 256² for the default vase |
 | Main chunk | ~655 KB (~173 KB gzip): three is most of it; the worker 44 KB |

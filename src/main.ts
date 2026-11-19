@@ -45,6 +45,7 @@ import type { PanelHandle } from './ui/panel';
 import type { Verdict } from './ui/report';
 import { meshVerdicts, statusText } from './ui/report';
 import { applyStaticText } from './ui/staticText';
+import { registerServiceWorker } from './pwa';
 import { buildParamsOf, defaultState } from './state/schema';
 import type { AppState } from './state/schema';
 import { BLANK_ID, PRESETS, presetById } from './state/presets';
@@ -492,5 +493,6 @@ onLangChange((next) => {
   if (lastReport) showReport(...lastReport);
 });
 
-// --- старт ---
+// --- старт; офлайн после первого визита — только в сборке (sw.js пишет плагин Vite) ---
 show();
+if (import.meta.env.PROD) registerServiceWorker(navigator, window, document);

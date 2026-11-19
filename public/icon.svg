@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="vase">
+      <path d="M25 12C25 20 13 25 13 36C13 46 20 50 22 54H42C44 50 51 46 51 36C51 25 39 20 39 12Z"/>
+    </clipPath>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#161b22"/>
+  <path d="M25 12C25 20 13 25 13 36C13 46 20 50 22 54H42C44 50 51 46 51 36C51 25 39 20 39 12Z" fill="#58a6ff"/>
+  <g clip-path="url(#vase)" fill="none" stroke="#8cc4ff" stroke-width="2.6" stroke-linecap="round">
+    <path d="M10 29q4-3.2 8 0t8 0 8 0 8 0 8 0 8 0"/>
+    <path d="M10 38q4-3.2 8 0t8 0 8 0 8 0 8 0 8 0"/>
+    <path d="M10 47q4-3.2 8 0t8 0 8 0 8 0 8 0 8 0"/>
+  </g>
+  <ellipse cx="32" cy="12" rx="7" ry="2.2" fill="#dce3ea"/>
+</svg>
