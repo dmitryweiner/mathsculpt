@@ -1,84 +1,61 @@
 #!/usr/bin/env node
-// Браузерный смоук: Three.js-слой нельзя грузить в vitest (WebGL), поэтому
-// проверяем здесь. Каждый профиль строится без ошибок консоли, статус
-// показывает watertight, ripples тумблится.
+// Браузерный смоук: то, что нельзя проверить в vitest — Three.js/WebGL,
+// воркер, реальные клики по панели, выгрузка файла.
 //
-//   node scripts/smoke.mjs                    # полный смоук
-//   node scripts/smoke.mjs --screenshot shots/x.png
-//   node scripts/smoke.mjs --preview          # прод-сборка (vite preview :4287)
+//   node scripts/smoke.mjs                    # dev-сервер (:5287)
+//   node scripts/smoke.mjs --preview          # прод-сборка (пересобирается, vite preview :4287)
+//   node scripts/smoke.mjs --shots shots      # + кадр в конце каждого шага
 //
-// Любая ошибка консоли/страницы → ненулевой код выхода (годится для CI).
+// Шаги — китовой обвязки (`app.step`): каждый в свежей странице и чистом
+// хранилище, ошибки консоли помечены шагом. Любая ошибка консоли/страницы
+// или упавший шаг → ненулевой код выхода (годится для CI); провал оставляет
+// кадр `smoke-fail.png` (в --shots или во временной папке). Браузер — в
+// en-US: проверки читают английский текст; языки проверяет свой шаг.
 
-import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { chromium } from 'playwright';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { binaryStl, check, download, horizontalOverflow, launch, parseArgs, settled, VIEWPORTS } from './lib/harness.mjs';
 
-const args = process.argv.slice(2);
-const VALUE_FLAGS = new Set(['screenshot']);
-const flags = new Map();
-for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  if (a.startsWith('--')) {
-    const name = a.slice(2);
-    flags.set(name, VALUE_FLAGS.has(name) ? args[++i] : 'true');
-  }
-}
+const flags = parseArgs(process.argv.slice(2), ['shots']);
+const shotsDir = flags.get('shots');
+if (shotsDir) mkdirSync(shotsDir, { recursive: true });
 
-const preview = flags.has('preview');
-const PORT = preview ? 4287 : 5287;
-const BASE = `http://localhost:${PORT}`;
+const app = await launch({ preview: flags.has('preview') });
+let shotNumber = 0;
 
-async function serverUp() {
-  try {
-    return (await fetch(BASE)).ok;
-  } catch {
-    return false;
-  }
-}
-
-let devProc = null;
-async function ensureServer() {
-  if (await serverUp()) return;
-  const cmd = preview ? ['vite', 'preview', '--port', String(PORT), '--strictPort'] : ['vite', '--port', String(PORT), '--strictPort'];
-  devProc = spawn('npx', cmd, { stdio: 'ignore' });
-  for (let i = 0; i < 30 && !(await serverUp()); i++) await new Promise((r) => setTimeout(r, 1000));
-  if (!(await serverUp())) {
-    console.error(`server did not start on :${PORT}`);
-    process.exit(1);
-  }
-}
-
-const errors = [];
-let ctxLabel = 'app';
-function attach(page) {
-  page.on('pageerror', (e) => errors.push(`[${ctxLabel}] ${String(e)}`));
-  page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`[${ctxLabel}] ${m.text()}`);
+/**
+ * Шаг в свежей странице: `fn(page)`; с --shots — кадр в конце, при провале —
+ * всегда (`smoke-fail.png`).
+ */
+async function step(name, fn, open = {}) {
+  await app.step(name, async () => {
+    const { page, context } = await app.open({ viewport: VIEWPORTS.desktop, locale: 'en-US', ...open });
+    try {
+      await page.waitForSelector('#status[data-build]');
+      await fn(page);
+      shotNumber++;
+      if (shotsDir)
+        await page.screenshot({ path: join(shotsDir, `${String(shotNumber).padStart(2, '0')}-${name.replace(/\W+/g, '-')}.png`) });
+    } catch (error) {
+      const shot = join(shotsDir ?? tmpdir(), 'smoke-fail.png');
+      await page.screenshot({ path: shot }).catch(() => {});
+      throw new Error(`${error instanceof Error ? error.message : String(error)}\nframe: ${shot}`, { cause: error });
+    } finally {
+      await context.close();
+    }
   });
 }
 
-await ensureServer();
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
-attach(page);
+const statusOf = (page) => page.locator('#status').textContent();
 
-await page.goto(BASE);
-await page.waitForTimeout(600);
-
-// каждый профиль строится, статус — watertight
-const ids = await page.$$eval('#shape_profile option', (els) => els.map((e) => e.value));
-for (const id of ids) {
-  ctxLabel = `profile:${id}`;
-  await page.selectOption('#shape_profile', id);
-  await page.waitForTimeout(250);
-  const status = await page.locator('#status').textContent();
-  if (!status.includes('watertight ✓')) errors.push(`[${ctxLabel}] status="${status}"`);
+async function expectWatertight(page, what) {
+  const status = await statusOf(page);
+  check(status.includes('watertight ✓'), `${what}: status "${status}"`);
 }
-console.log(`profiles checked: ${ids.length}`);
 
 /** Раскрывает свёрнутую карточку, где лежит контрол: в свёрнутой его не видно. */
-async function reveal(id) {
+async function reveal(page, id) {
   await page.evaluate((target) => {
     const card = document.getElementById(target)?.closest('.fcard.collapsed');
     card?.querySelector(':scope > .fcard-head')?.click();
@@ -86,197 +63,200 @@ async function reveal(id) {
 }
 
 /** Ползунок как отпущенный: кадр (input) и законченная правка (change) — шаг отмены. */
-async function setSlider(id, value) {
-  await reveal(id);
+async function setSlider(page, id, value) {
+  await reveal(page, id);
   const slider = page.locator(`#${id}`);
   await slider.fill(value);
   await slider.dispatchEvent('input');
   await slider.dispatchEvent('change');
 }
 
-// каждая карточка (смещения + деформеры) включается и выключается без ошибок;
-// галочка — первой строкой внутри карточки (#p_<карточка>_on)
-const cardIds = await page.$$eval('#displaceCards .fcard, #deformCards .fcard', (els) => els.map((e) => e.id.replace('card_', '')));
-for (const id of cardIds) {
-  ctxLabel = `card:${id}`;
-  await reveal(`p_${id}_on`);
-  await page.locator(`#p_${id}_on`).click();
-  await page.waitForTimeout(150);
-  const status = await page.locator('#status').textContent();
-  if (!status.includes('watertight ✓')) errors.push(`[${ctxLabel}] status="${status}"`);
-  await page.locator(`#p_${id}_on`).click();
-  await page.waitForTimeout(80);
-}
-console.log(`cards toggled: ${cardIds.length}`);
-
-// каждый встроенный пресет открывается из диалога кита и даёт watertight-меш;
-// его имя — на кнопке пресетов
-await page.locator('#presetBtn').click();
-const presetValues = await page.$$eval('#presetList .preset-row[data-ref^="b:"]', (els) => els.map((e) => e.dataset.ref));
-await page.locator('#presetsClose').click();
-for (const v of presetValues) {
-  ctxLabel = `preset:${v.slice(2)}`;
-  await page.locator('#presetBtn').click();
-  const pick = page.locator(`#presetList .preset-row[data-ref="${v}"] .preset-pick`);
-  const name = await pick.locator('.preset-name').textContent();
-  await pick.click();
-  await page.waitForTimeout(300);
-  const status = await page.locator('#status').textContent();
-  if (!status.includes('watertight ✓')) errors.push(`[${ctxLabel}] status="${status}"`);
-  if ((await page.locator('#presetBtn').textContent()).trim() !== name)
-    errors.push(`[${ctxLabel}] preset button: ${await page.locator('#presetBtn').textContent()}`);
-}
-console.log(`presets checked: ${presetValues.length}`);
-
-// отмена и повтор: правка ползунка — один шаг; ↩️ возвращает, ↪️ повторяет
-ctxLabel = 'undo';
-await page.goto(BASE);
-await page.waitForTimeout(400);
-const amp = page.locator('#p_ripples_amp');
-const ampBefore = await amp.inputValue();
-await setSlider('p_ripples_amp', '0.08');
-await page.locator('#undoBtn').click();
-await page.waitForTimeout(150);
-if ((await amp.inputValue()) !== ampBefore) errors.push(`[undo] amp=${await amp.inputValue()}, expected ${ampBefore}`);
-await page.locator('#redoBtn').click();
-await page.waitForTimeout(150);
-if ((await amp.inputValue()) !== '0.08') errors.push(`[redo] amp=${await amp.inputValue()}, expected 0.08`);
-if (!(await page.locator('#redoBtn').isDisabled())) errors.push('[redo] still enabled at the newest step');
-console.log('undo/redo ok');
-
-// 💾: пресет под именем из prompt — в «My presets», и после перезагрузки тоже
-ctxLabel = 'savePreset';
-page.once('dialog', (dialog) => dialog.accept('Smoke preset'));
-await page.locator('#saveBtn').click();
-await page.waitForTimeout(200);
-await page.reload();
-await page.waitForTimeout(400);
-await page.locator('#presetBtn').click();
-const mine = await page.$$eval('#presetList .preset-row[data-ref^="u:"] input', (els) => els.map((e) => e.value));
-await page.locator('#presetsClose').click();
-if (!mine.includes('Smoke preset')) errors.push(`[savePreset] my presets: ${JSON.stringify(mine)}`);
-else console.log('save preset ok');
-
-// open top + слайдер толщины стенки: wall=0 → оболочка, wall>0 → watertight-солид
-ctxLabel = 'wall';
-await page.selectOption('#shape_caps', 'bottom');
-await page.waitForTimeout(200);
-if (await page.locator('#shape_wall').isHidden()) errors.push('[wall] slider hidden in open top');
-await setSlider('shape_wall', '0');
-await page.waitForTimeout(300);
-const shellStatus = await page.locator('#status').textContent();
-if (!shellStatus.includes('open top')) errors.push(`[wall0] status="${shellStatus}" (ожидалась оболочка)`);
-await setSlider('shape_wall', '3');
-await page.waitForTimeout(300);
-const wallStatus = await page.locator('#status').textContent();
-if (!wallStatus.includes('watertight ✓')) errors.push(`[wall] status="${wallStatus}" (ожидался watertight-солид)`);
-await page.selectOption('#shape_caps', 'both');
-await page.waitForTimeout(200);
-if (await page.locator('#shape_wall').isVisible()) errors.push('[wall] slider visible in solid mode');
-
-// полная сборка в worker: статус со временем показывает "full NxN"
-ctxLabel = 'worker';
-await page.goto(BASE);
-await page.waitForTimeout(400);
-let fullSeen = false;
-for (let i = 0; i < 30 && !fullSeen; i++) {
-  await page.waitForTimeout(300);
-  const st = await page.locator('#status').textContent();
-  if (st.includes('full ')) fullSeen = true;
-}
-if (!fullSeen) errors.push('[worker] full build never finished (status stuck on preview)');
-else console.log('worker full build ok');
-
-// настройка формы профиля: карточка видна для пресета, скрыта для фигуры,
-// belly>0 меняет геометрию
-ctxLabel = 'profileShape';
-await page.selectOption('#shape_profile', 'vase');
-await page.waitForTimeout(250);
-if (await page.locator('#card_profileShape').isHidden()) errors.push('[profileShape] card hidden for preset');
-await setSlider('p_profileShape_belly', '0.6');
-await page.waitForTimeout(250);
-const psStatus = await page.locator('#status').textContent();
-if (!psStatus.includes('watertight ✓')) errors.push(`[profileShape] status="${psStatus}"`);
-
-// Фурье-профиль: карточка появляется, форма профиля скрыта, меш watertight
-ctxLabel = 'fourier';
-await page.selectOption('#shape_profile', 'fourier');
-await page.waitForTimeout(300);
-const fourierVisible = await page.locator('#card_fourier').isVisible();
-if (!fourierVisible) errors.push('[fourier] card not visible');
-if (await page.locator('#card_profileShape').isVisible()) errors.push('[fourier] profileShape card still visible');
-const fst = await page.locator('#status').textContent();
-if (!fst.includes('watertight ✓')) errors.push(`[fourier] status="${fst}"`);
-
-// матрица модуляции: добавить маршрут → бейдж ∿ на слайдере цели
-ctxLabel = 'mod';
-await page.locator('#card_mod .fcard-head').click();
-await page.waitForTimeout(150);
-await page.locator('#addRouteBtn').click();
-await page.waitForTimeout(300);
-const badge = await page.locator('.mod-badge').count();
-if (badge < 1) errors.push('[mod] no ∿ badge after adding route');
-const mst = await page.locator('#status').textContent();
-if (!mst.includes('watertight ✓')) errors.push(`[mod] status="${mst}"`);
-console.log('mod route + badge ok');
-
-// экспорт STL отдаёт непустой валидный буфер (перехватываем download)
-ctxLabel = 'export';
-const downloadP = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
-await page.locator('#exportBtn').click();
-const download = await downloadP;
-if (!download) errors.push('[export] no download event');
-else console.log('export ok:', download.suggestedFilename());
-
-// языки: браузер на русском открывает русский; 🌐 переключает, выбор переживает
-// перезагрузку; иврит зеркалит страницу (панель справа)
-ctxLabel = 'lang';
-const ruContext = await browser.newContext({ locale: 'ru-RU', viewport: { width: 1280, height: 820 } });
-const ru = await ruContext.newPage();
-attach(ru);
-await ru.goto(BASE);
-await ru.waitForTimeout(600);
-if ((await ru.locator('html').getAttribute('lang')) !== 'ru')
-  errors.push(`[lang] ru-RU browser: lang=${await ru.locator('html').getAttribute('lang')}`);
-if ((await ru.locator('#exportBtn').textContent()).trim() !== 'Выгрузить STL')
-  errors.push(`[lang] ru: export button "${await ru.locator('#exportBtn').textContent()}"`);
-if ((await ru.locator('label[for="p_ripples_amp"]').textContent()) !== 'Амплитуда') errors.push('[lang] ru: the panel is not in Russian');
-await ru.selectOption('.lang-field select', 'he');
-await ru.waitForTimeout(300);
-if ((await ru.locator('html').getAttribute('dir')) !== 'rtl') errors.push('[lang] he: the page is not right to left');
-const heBox = await ru.locator('#panel').boundingBox();
-if (!heBox || heBox.x < 640) errors.push(`[lang] he: the panel is not on the right (x=${heBox?.x})`);
-await ru.reload();
-await ru.waitForTimeout(600);
-if ((await ru.locator('html').getAttribute('lang')) !== 'he') errors.push('[lang] the choice did not survive a reload');
-await ruContext.close();
-console.log('languages ok');
-
-// телефон: панель — нижний лист кита; ручка закрывает, «Settings» открывает
-ctxLabel = 'phone';
-const phone = await browser.newPage({ viewport: { width: 390, height: 780 } });
-attach(phone);
-await phone.goto(BASE);
-await phone.waitForTimeout(600);
-await phone.locator('#sheetClose').click();
-await phone.waitForTimeout(200);
-if (await phone.locator('#panel').evaluate((node) => node.classList.contains('open'))) errors.push('[phone] the sheet did not close');
-await phone.locator('#sheetOpen').click();
-await phone.waitForTimeout(200);
-if ((await phone.locator('#sheetOpen').getAttribute('aria-expanded')) !== 'true') errors.push('[phone] the sheet did not open');
-const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-if (overflow > 0) errors.push(`[phone] the page scrolls sideways by ${overflow} px`);
-await phone.close();
-console.log('phone sheet ok');
-
-if (flags.has('screenshot')) {
-  const path = flags.get('screenshot');
-  mkdirSync(dirname(path), { recursive: true });
-  await page.screenshot({ path });
-  console.log(path);
+/** Высота модели в STL, мм: размах z по вершинам двоичного файла. */
+function stlHeight(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const count = view.getUint32(80, true);
+  let min = Infinity;
+  let max = -Infinity;
+  for (let t = 0; t < count; t++) {
+    for (let v = 0; v < 3; v++) {
+      const z = view.getFloat32(84 + t * 50 + 12 + v * 12 + 8, true);
+      min = Math.min(min, z);
+      max = Math.max(max, z);
+    }
+  }
+  return max - min;
 }
 
-console.log('console/page errors:', errors.length ? errors : 'none');
-await browser.close();
-devProc?.kill();
-process.exit(errors.length ? 2 : 0);
+await app.run(
+  async () => {
+    await step('every profile builds watertight', async (page) => {
+      const ids = await page.$$eval('#shape_profile option', (els) => els.map((e) => e.value));
+      check(ids.length >= 17, `only ${ids.length} profiles`);
+      for (const id of ids) {
+        await page.selectOption('#shape_profile', id);
+        await page.waitForTimeout(250);
+        await expectWatertight(page, `profile ${id}`);
+      }
+    });
+
+    // галочка — первой строкой внутри карточки (#p_<карточка>_on)
+    await step('every card switches on and off', async (page) => {
+      const cardIds = await page.$$eval('#displaceCards .fcard, #deformCards .fcard', (els) => els.map((e) => e.id.replace('card_', '')));
+      check(cardIds.length >= 30, `only ${cardIds.length} cards`);
+      for (const id of cardIds) {
+        await reveal(page, `p_${id}_on`);
+        await page.locator(`#p_${id}_on`).click();
+        await page.waitForTimeout(150);
+        await expectWatertight(page, `card ${id}`);
+        await page.locator(`#p_${id}_on`).click();
+        await page.waitForTimeout(80);
+      }
+    });
+
+    // из диалога кита; имя открытого — на кнопке пресетов
+    await step('every built-in preset opens from the dialog', async (page) => {
+      await page.locator('#presetBtn').click();
+      const refs = await page.$$eval('#presetList .preset-row[data-ref^="b:"]', (els) => els.map((e) => e.dataset.ref));
+      await page.locator('#presetsClose').click();
+      check(refs.length >= 20, `only ${refs.length} presets`);
+      for (const ref of refs) {
+        await page.locator('#presetBtn').click();
+        const pick = page.locator(`#presetList .preset-row[data-ref="${ref}"] .preset-pick`);
+        const name = await pick.locator('.preset-name').textContent();
+        await pick.click();
+        await page.waitForTimeout(300);
+        await expectWatertight(page, `preset ${ref}`);
+        const button = (await page.locator('#presetBtn').textContent()).trim();
+        check(button === name, `preset ${ref}: the button says "${button}"`);
+      }
+    });
+
+    await step('undo and redo a slider: one step', async (page) => {
+      const amp = page.locator('#p_ripples_amp');
+      const before = await amp.inputValue();
+      await setSlider(page, 'p_ripples_amp', '0.08');
+      await page.locator('#undoBtn').click();
+      await page.waitForTimeout(150);
+      check((await amp.inputValue()) === before, `undo: amp=${await amp.inputValue()}, expected ${before}`);
+      await page.locator('#redoBtn').click();
+      await page.waitForTimeout(150);
+      check((await amp.inputValue()) === '0.08', `redo: amp=${await amp.inputValue()}, expected 0.08`);
+      check(await page.locator('#redoBtn').isDisabled(), 'redo is still enabled at the newest step');
+    });
+
+    // 💾: пресет под именем из prompt — в «My presets», и после перезагрузки тоже
+    await step('a saved preset survives a reload', async (page) => {
+      page.once('dialog', (dialog) => dialog.accept('Smoke preset'));
+      await page.locator('#saveBtn').click();
+      await page.waitForTimeout(200);
+      await page.reload();
+      await page.waitForTimeout(400);
+      await page.locator('#presetBtn').click();
+      const mine = await page.$$eval('#presetList .preset-row[data-ref^="u:"] input', (els) => els.map((e) => e.value));
+      check(mine.includes('Smoke preset'), `my presets: ${JSON.stringify(mine)}`);
+    });
+
+    // открытый верх: wall=0 → оболочка, wall>0 → watertight-солид
+    await step('open top: a shell, then a hollow vessel with a wall', async (page) => {
+      await page.selectOption('#shape_caps', 'bottom');
+      await page.waitForTimeout(200);
+      check(await page.locator('#shape_wall').isVisible(), 'the wall row is hidden in open top');
+      await setSlider(page, 'shape_wall', '0');
+      await page.waitForTimeout(300);
+      const shell = await statusOf(page);
+      check(shell.includes('open top'), `wall 0: status "${shell}" (a shell expected)`);
+      await setSlider(page, 'shape_wall', '3');
+      await page.waitForTimeout(300);
+      await expectWatertight(page, 'wall 3');
+      await page.selectOption('#shape_caps', 'both');
+      await page.waitForTimeout(200);
+      check(await page.locator('#shape_wall').isHidden(), 'the wall row is shown in solid mode');
+    });
+
+    // полная сборка в воркере: статус со временем показывает «full N×N»
+    await step('the worker builds the full mesh', async (page) => {
+      await page.waitForSelector('#status[data-build="full"]', { timeout: 15000 });
+      await expectWatertight(page, 'full build');
+    });
+
+    // настройка формы видна у пресет-профиля и скрыта у Фурье; Фурье — своя карточка
+    await step('the profile shape and Fourier cards', async (page) => {
+      await page.selectOption('#shape_profile', 'vase');
+      await page.waitForTimeout(250);
+      check(await page.locator('#card_profileShape').isVisible(), 'the profile shape card is hidden for a preset profile');
+      await setSlider(page, 'p_profileShape_belly', '0.6');
+      await page.waitForTimeout(250);
+      await expectWatertight(page, 'belly 0.6');
+      await page.selectOption('#shape_profile', 'fourier');
+      await page.waitForTimeout(300);
+      check(await page.locator('#card_fourier').isVisible(), 'the Fourier card is hidden');
+      check(await page.locator('#card_profileShape').isHidden(), 'the profile shape card is still shown');
+      await expectWatertight(page, 'fourier');
+    });
+
+    await step('modulation: a route and its ∿', async (page) => {
+      await page.locator('#card_mod .fcard-head').click();
+      await page.waitForTimeout(150);
+      await page.locator('#addRouteBtn').click();
+      await page.waitForTimeout(300);
+      check((await page.locator('.mod-badge').count()) >= 1, 'no ∿ badge after adding a route');
+      await expectWatertight(page, 'with a route');
+    });
+
+    // настоящий файл: двоичный STL, треугольники есть, высота — заданные мм
+    await step('downloads a real STL in millimetres', async (page) => {
+      await setSlider(page, 'shape_height', '150');
+      await page.waitForTimeout(300);
+      const file = await download(page, '#exportBtn');
+      const stl = binaryStl(file.bytes);
+      check(file.name === 'vase.stl' && stl !== null && stl.triangles > 0, `broken STL: ${file.name}, ${file.bytes.length} bytes`);
+      check(stl.header.startsWith('MathSculpt'), `STL header "${stl.header}"`);
+      const height = stlHeight(file.bytes);
+      check(Math.abs(height - 150) < 0.01, `the STL is ${height} mm tall, 150 expected`);
+    });
+
+    // браузер на русском открывает русский; 🌐 переключает, выбор переживает
+    // перезагрузку; иврит зеркалит страницу (панель справа)
+    await step(
+      'languages: Russian by the browser, Hebrew mirrored, the choice kept',
+      async (page) => {
+        check(
+          (await page.locator('html').getAttribute('lang')) === 'ru',
+          `ru-RU browser: lang=${await page.locator('html').getAttribute('lang')}`,
+        );
+        check((await page.locator('#exportBtn').textContent()).trim() === 'Выгрузить STL', 'ru: the export button is not in Russian');
+        check((await page.locator('label[for="p_ripples_amp"]').textContent()) === 'Амплитуда', 'ru: the panel is not in Russian');
+        await page.selectOption('.lang-field select', 'he');
+        await page.waitForTimeout(300);
+        check((await page.locator('html').getAttribute('dir')) === 'rtl', 'he: the page is not right to left');
+        const box = await page.locator('#panel').boundingBox();
+        check(box && box.x > VIEWPORTS.desktop.width / 2, `he: the panel is not on the right (x=${box?.x})`);
+        await page.reload();
+        await page.waitForFunction(() => document.documentElement.lang === 'he');
+      },
+      { locale: 'ru-RU' },
+    );
+
+    // широкий экран: панель рядом с видом, ничего не уезжает вбок
+    await step('desktop: no sideways scroll', async (page) => {
+      check((await horizontalOverflow(page)) === 0, `the page scrolls sideways by ${await horizontalOverflow(page)} px`);
+    });
+
+    // телефон: панель — нижний лист кита; ручка закрывает, «Settings» открывает
+    await step(
+      'phone: the sheet closes and opens, no sideways scroll',
+      async (page) => {
+        await settled(page);
+        await page.locator('#sheetClose').click();
+        await settled(page);
+        check(!(await page.locator('#panel').evaluate((node) => node.classList.contains('open'))), 'the sheet did not close');
+        await page.locator('#sheetOpen').click();
+        await settled(page);
+        check((await page.locator('#sheetOpen').getAttribute('aria-expanded')) === 'true', 'the sheet did not open');
+        check((await horizontalOverflow(page)) === 0, `the page scrolls sideways by ${await horizontalOverflow(page)} px`);
+      },
+      { viewport: VIEWPORTS.phone },
+    );
+  },
+  `smoke passed (${flags.has('preview') ? 'preview' : 'dev'})`,
+);

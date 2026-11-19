@@ -8,28 +8,42 @@ same boilerplate each cycle is a big waste of tokens. Instead, put reusable
 tooling in `scripts/` **once**, give it CLI flags, and call it thereafter.
 Extend an existing script with a new flag rather than cloning it.
 
-Existing helpers:
+Existing helpers, all on maker-kit's harness (`scripts/lib/harness.mjs`:
+the kit's `maker-kit/harness` on this project's ports):
 
 - `scripts/snap.mjs` — single debug screenshot of the app. Flags:
   `--out <path>` (required), `--lang <en|ru|uk|he>` (the browser's language;
-  the app picks by it), `--profile <id>`, `--preset <id>` (`gyroid-sphere`, …),
-  `--caps <both|bottom>`, `--wall <mm>`,
+  the app picks by it), `--preset <id>` (`gyroid-sphere`, …; applied first,
+  the other flags edit it), `--profile <id>`, `--caps <both|bottom>`,
+  `--wall <mm>`,
   `--set <id>=<value>` (repeatable — a panel slider or select by its id, set
   as released; a folded card is opened first; e.g.
   `--set p_profileShape_belly=0.6`), `--eval <js>` (repeatable — prints the
   value of an expression in the page before the shot: where an element is,
   what it holds; it may act too, e.g.
   `--eval "document.getElementById('addRouteBtn').click()"`), `--width`,
-  `--height`, `--wait <ms>`, `--full` (wait for the Web Worker full-res
-  build). Auto-starts the dev server, captures console/page errors, prints
+  `--height`, `--wait <ms>`, `--full` (wait for the worker's full build:
+  `#status[data-build="full"]`, any language), `--preview` (the production
+  build). Starts the dev server, fails on console/page errors, prints
   `#status`. Ids: `shape_profile`, `shape_caps`, `shape_wall`,
   `shape_height`, `export_resolution`; a card's switch `p_<card>_on`, its
   parameters `p_<card>_<key>`; `lfo<i>_<key>`, `route<i>_<key>`.
-- `scripts/smoke.mjs` — headless smoke over every profile/card/preset + worker,
-  modulation, wall/open-top, profile-shape, presets through the kit's dialog,
-  undo/redo, 💾 + reload, languages (ru-RU browser, 🌐, Hebrew mirrored, the
-  choice kept), the phone sheet. `--preview` runs the prod build.
-- `scripts/shot.mjs` — one screenshot per profile into `./shots`.
+- `scripts/smoke.mjs` — the browser smoke in the kit's steps, each on a fresh
+  page: every profile, card and preset (through the kit's dialog) builds
+  watertight; undo/redo; 💾 + reload; open top and the wall; the worker's
+  full build; profile-shape and Fourier cards; a modulation route and ∿; a
+  real STL download, its height in mm; languages (ru-RU browser, 🌐, Hebrew
+  mirrored, the choice kept); no sideways scroll; the phone sheet.
+  `--preview` rebuilds and checks the production build; `--shots <dir>`
+  saves a frame per step. A failed step names itself and leaves
+  `smoke-fail.png` (in `--shots` or the temp dir).
+- `scripts/shot.mjs` — one screenshot per profile into `./shots` (`--out <dir>`).
+- `scripts/lib/harness.mjs` — the kit's harness on ports 5287 (dev) and 4287
+  (preview) with `--strictPort`: 5173 is every project's default, and a
+  stale server of another project there would be tested by mistake. With
+  `--preview` it builds first, and a busy preview port is an error.
+  `PLAYWRIGHT_BROWSER` gives a chromium path where Playwright misses its
+  own.
 
 When a new one-off check is needed more than once, add it to `snap.mjs`/`smoke.mjs`
 as a flag or step instead of spawning a temp file.
@@ -52,7 +66,7 @@ Node — the version in `.node-version` (24); check `node -v`.
 ```bash
 npm run check     # tsc (TypeScript 7) + oxlint --type-aware (bans `as` casts) + prettier --check + vitest
 npm run format    # prettier --write (not *.md and golden: .prettierignore)
-npm run smoke     # browser smoke (dev :5287); --preview for the prod build (:4287) — build first
+npm run smoke     # browser smoke (dev :5287); --preview rebuilds and checks the prod build (:4287)
 npm run shot      # profile screenshots → ./shots
 npm run build     # production build → ./dist
 ```
@@ -66,13 +80,6 @@ GitHub Pages is published by `.github/workflows/deploy.yml` on every push
 to `main`: `npm ci`, `npm run check`, `npm run build`, the smoke on the
 production build, then `dist/`. A PR runs the same without publishing.
 The build is not committed (`dist/` is ignored).
-
-The smoke scripts use the ports 5287 (dev) and 4287 (preview) with
-`--strictPort`: 5173 is every project's default, and a stale server of
-another project there would be tested by mistake. The old scripts kill
-`npx`, and `vite preview` under it may survive on 4287: stop it before the
-next `--preview` (fixed when the scripts move to maker-kit's harness,
-m5-harness).
 
 Golden geometry tests pin exact per-profile output; regenerate consciously with
 `UPDATE_GOLDEN=1 npx vitest run tests/golden.test.ts` after an intentional
