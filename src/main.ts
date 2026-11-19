@@ -51,6 +51,7 @@ import { BLANK_ID, PRESETS, presetById } from './state/presets';
 import { decodeProject, encodeProject, projectFile } from './state/projectFile';
 import type { SculptPreset } from './state/userPresets';
 import { savePresetAs, userPresetsRecord } from './state/userPresets';
+import { projectRecord } from './state/project';
 import type { BuildJob, BuildResult } from './worker/protocol';
 import type { Key } from './i18n';
 import type { Params } from './i18n';
@@ -79,14 +80,16 @@ const scene = createScene(canvas);
 initLang();
 applyStaticText(document);
 
-// --- состояние: начало истории, а не шаг ---
-const history = new History<AppState>(defaultState(), HISTORY_LIMIT);
+// --- состояние: модель из браузера или по умолчанию — начало истории, а не шаг ---
+const storage = browserStorage();
+const opening = loadRecord(storage, projectRecord);
+const history = new History<AppState>(opening?.state ?? defaultState(), HISTORY_LIMIT);
 /** параметры сборки показанного состояния (стенка уже в единицах модели) */
 let params: BuildParams = buildParamsOf(history.state);
 /** открытый пресет (`b:<id>`, `u:<id>`) или никакой */
-let presetRef: PresetRef = '';
+let presetRef: PresetRef = opening?.ref ?? '';
 /** имя, данное файлу проекта (⬇️ или открытый 📂); пусто — имя открытого пресета */
-let givenName = '';
+let givenName = opening?.name ?? '';
 /** JSON показанного состояния: законченная правка того же, что уже показано кадрами, не пересобирает */
 let shown = '';
 
@@ -95,6 +98,7 @@ function edit(next: AppState, final: boolean): void {
   if (final) history.commit(next);
   else history.live(next);
   show();
+  if (final) saveProject();
 }
 
 /** Показывает состояние истории: панель, превью и полную сборку, кнопки отмены, ● на имени. */
@@ -172,10 +176,14 @@ const historyKeys = bindHistory({
   undo: undoBtn,
   redo: redoBtn,
   onUndo: () => {
-    if (history.undo()) show();
+    if (!history.undo()) return;
+    show();
+    saveProject();
   },
   onRedo: () => {
-    if (history.redo()) show();
+    if (!history.redo()) return;
+    show();
+    saveProject();
   },
   canUndo: () => history.canUndo,
   canRedo: () => history.canRedo,
@@ -196,6 +204,19 @@ function drawBanner(): void {
   });
 }
 
+/**
+ * Пишет модель в браузер (с открытым пресетом и данным именем) — после
+ * законченной правки, отмены, смены пресета или имени. Сбой — строкой о
+ * модели в баннере, пока длится; совет кита — сохранить файлом (⬇️).
+ */
+function saveProject(): void {
+  storageStatus = {
+    ...storageStatus,
+    project: saveRecord(storage, projectRecord, { state: history.state, ref: presetRef, name: givenName }),
+  };
+  drawBanner();
+}
+
 /** Пишет свои пресеты; сбой — в баннер, удача снимает прошлый сбой. */
 function writePresets(action: 'save' | 'delete'): void {
   const result: StorageWrite = saveRecord(storage, userPresetsRecord, userPresets);
@@ -204,7 +225,6 @@ function writePresets(action: 'save' | 'delete'): void {
 }
 
 // --- пресеты: встроенные по id (`core/presets` кита), свои — запись кита, диалог кита ---
-const storage = browserStorage();
 let userPresets: SculptPreset[] = loadRecord(storage, userPresetsRecord) ?? [];
 const presetsDialog = createModal(el('presets', HTMLDivElement), { close: el('presetsClose', HTMLButtonElement) });
 const presetList = el('presetList', HTMLDivElement);
@@ -267,6 +287,7 @@ function drawPresetList(): void {
       userPresets = removeUserPreset(userPresets, id);
       if (presetRef === `u:${id}`) presetRef = '';
       writePresets('delete');
+      saveProject();
       refreshPresetButton();
     },
   });
@@ -295,6 +316,7 @@ saveBtn.addEventListener('click', () => {
   presetRef = makePresetRef('u', saved.id);
   givenName = '';
   writePresets('save');
+  saveProject();
   refreshPresetButton();
 });
 
@@ -306,6 +328,7 @@ fileSaveBtn.addEventListener('click', () => {
   if (name === null) return;
   givenName = name.trim();
   download(projectFile(givenName), encodeProject(givenName, history.state), 'application/json');
+  saveProject();
   refreshPresetButton();
 });
 
