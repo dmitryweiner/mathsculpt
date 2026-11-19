@@ -48,6 +48,8 @@ displacements over a base surface and prints the result.
 - **English, Russian, Ukrainian and Hebrew** (the page mirrors right to left);
   the browser's language by default, 🌐 to switch.
 - On a phone the panel is a bottom sheet over the model.
+- **Works offline** after the first visit and installs as an app (PWA); an
+  update arrives by itself on return to the page, and the model is kept.
 
 ## Development
 

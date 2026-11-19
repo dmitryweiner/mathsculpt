@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "check": "npm run typecheck && npm run lint && npm test",
     "smoke": "node scripts/smoke.mjs",
-    "shot": "node scripts/shot.mjs"
+    "shot": "node scripts/shot.mjs",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "maker-kit": "github:dmitryweiner/maker-kit#v0.5.1",
