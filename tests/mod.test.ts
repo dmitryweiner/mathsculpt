@@ -1,5 +1,5 @@
-// Пространственные LFO и матрица модуляции: формы, источники, effectiveParam,
-// сшитость шва, эффект маршрутов в конвейере.
+// Spatial LFOs and the modulation matrix: shapes, sources, effectiveParam,
+// the seam joined, the effect of routes in the pipeline.
 import { lfoValueAt, lfoCoord, effectiveParam, MOD_TARGETS, defaultModState, defaultLfo } from '../src/geo/mod';
 import type { SpatialLfoDef } from '../src/geo/mod';
 import { DISPLACE_CARDS, DEFORM_CARDS } from '../src/formulas';
@@ -13,14 +13,14 @@ function lfo(over: Partial<SpatialLfoDef>): SpatialLfoDef {
   return { ...defaultLfo(), ...over };
 }
 
-describe('формы LFO (источник z, rate 1)', () => {
+describe('LFO shapes (source z, rate 1)', () => {
   it('sine: sin(2π·v)', () => {
     const l = lfo({ shape: 'sine', rate: 1 });
     expect(at(l, 0, 0.25)).toBeCloseTo(1, 9);
     expect(at(l, 0, 0.5)).toBeCloseTo(0, 9);
   });
 
-  it('triangle: пик в v=0.25/0.75', () => {
+  it('triangle: peaks at v=0.25/0.75', () => {
     const l = lfo({ shape: 'triangle', rate: 1 });
     expect(at(l, 0, 0)).toBeCloseTo(-1, 9);
     expect(at(l, 0, 0.25)).toBeCloseTo(0, 9);
@@ -33,13 +33,13 @@ describe('формы LFO (источник z, rate 1)', () => {
     expect(at(l, 0, 0.75)).toBeCloseTo(0.5, 9);
   });
 
-  it('square: ±1 по полуциклам', () => {
+  it('square: ±1 by half cycles', () => {
     const l = lfo({ shape: 'square', rate: 2 });
     expect(at(l, 0, 0.1)).toBe(1);
     expect(at(l, 0, 0.3)).toBe(-1);
   });
 
-  it('random (S&H): константа внутри цикла, детерминирована', () => {
+  it('random (S&H): constant within a cycle, deterministic', () => {
     const l = lfo({ shape: 'random', rate: 4 });
     expect(at(l, 0, 0.1)).toBe(at(l, 0, 0.2));
     expect(at(l, 0, 0.1)).not.toBe(at(l, 0, 0.3));
@@ -47,20 +47,20 @@ describe('формы LFO (источник z, rate 1)', () => {
     expect(Math.abs(at(l, 0, 0.9))).toBeLessThanOrEqual(1);
   });
 
-  it('фаза сдвигает цикл', () => {
+  it('the phase shifts the cycle', () => {
     const a = lfo({ shape: 'sine', rate: 1, phase: 0 });
     const b = lfo({ shape: 'sine', rate: 1, phase: 0.25 });
     expect(at(b, 0, 0)).toBeCloseTo(at(a, 0, 0.25), 9);
   });
 });
 
-describe('источники координат', () => {
-  it('theta: u/2π; целый rate бесшовен на шве', () => {
+describe('coordinate sources', () => {
+  it('theta: u/2π; a whole rate is seamless at the seam', () => {
     const l = lfo({ source: 'theta', shape: 'sine', rate: 3 });
     expect(at(l, 0, 0.5)).toBeCloseTo(at(l, 2 * Math.PI, 0.5), 9);
   });
 
-  it('spiral: v + k·θ/2π, бесшовна при целых rate·k', () => {
+  it('spiral: v + k·θ/2π, seamless for whole rate·k', () => {
     const l = lfo({ source: 'spiral', shape: 'sine', rate: 2, k: 3 });
     expect(at(l, 0, 0.4)).toBeCloseTo(at(l, 2 * Math.PI, 0.4), 9);
   });
@@ -70,7 +70,7 @@ describe('источники координат', () => {
     expect(lfoCoord(l, 0, 0, 0.3, 0.4, 0, CTX)).toBeCloseTo(1, 9);
   });
 
-  it('dist: расстояние от центра, норм. на height/2', () => {
+  it('dist: the distance from the centre, normalised by height/2', () => {
     const l = lfo({ source: 'dist' });
     expect(lfoCoord(l, 0, 0, 0, 0, 1, CTX)).toBeCloseTo(1, 9);
     expect(lfoCoord(l, 0, 0, 0, 0, 0.5, CTX)).toBeCloseTo(0, 9);
@@ -78,38 +78,38 @@ describe('источники координат', () => {
 });
 
 describe('effectiveParam', () => {
-  it('линейный: base + depth·range·l, кламп', () => {
+  it('linear: base + depth·range·l, clamped', () => {
     expect(effectiveParam(0.5, 1, 0.5, [0, 1], false)).toBeCloseTo(1, 9);
     expect(effectiveParam(0.5, -1, 0.5, [0, 1], false)).toBeCloseTo(0, 9);
     expect(effectiveParam(0.5, 1, 1, [0, 1], false)).toBe(1);
   });
 
-  it('exp: маппинг в октавах', () => {
-    // диапазон [1, 8] → 3 октавы; l=1, depth=1/3 → ×2
+  it('exp: a mapping in octaves', () => {
+    // the range [1, 8] → 3 octaves; l=1, depth=1/3 → ×2
     expect(effectiveParam(2, 1, 1 / 3, [1, 8], true)).toBeCloseTo(4, 6);
     expect(effectiveParam(2, 0, 1, [1, 8], true)).toBeCloseTo(2, 9);
   });
 
-  it('exp с min=0 откатывается к линейному', () => {
+  it('exp with min=0 falls back to linear', () => {
     expect(effectiveParam(0.5, 1, 0.5, [0, 1], true)).toBeCloseTo(1, 9);
   });
 });
 
-describe('MOD_TARGETS ↔ UI-схема', () => {
-  it('каждая цель существует и диапазон совпадает со слайдером', () => {
+describe('MOD_TARGETS ↔ the UI schema', () => {
+  it('every target exists and its range matches the slider', () => {
     const cards = [...DISPLACE_CARDS, ...DEFORM_CARDS];
     for (const t of MOD_TARGETS) {
       const card = cards.find((c) => c.id === t.card);
-      expect(card, `нет карточки ${t.card}`).toBeDefined();
+      expect(card, `no card ${t.card}`).toBeDefined();
       const slider = card?.sliders.find((s) => s.k === t.param);
-      expect(slider, `нет слайдера ${t.card}.${t.param}`).toBeDefined();
+      expect(slider, `no slider ${t.card}.${t.param}`).toBeDefined();
       expect([slider?.min, slider?.max]).toEqual([t.range[0], t.range[1]]);
     }
   });
 });
 
-describe('модуляция в конвейере', () => {
-  it('маршрут с depth=0 не меняет геометрию', () => {
+describe('modulation in the pipeline', () => {
+  it('a route with depth=0 changes no geometry', () => {
     const a = defaultParams();
     a.nu = 32;
     a.nv = 32;
@@ -120,7 +120,7 @@ describe('модуляция в конвейере', () => {
     expect(Array.from(buildMesh(b).positions)).toEqual(Array.from(buildMesh(a).positions));
   });
 
-  it('LFO(z, square)→ripples.amp: низ рифлёный, верх гладкий', () => {
+  it('LFO(z, square)→ripples.amp: a fluted bottom, a smooth top', () => {
     const p = defaultParams();
     p.nu = 48;
     p.nv = 48;
@@ -128,7 +128,7 @@ describe('модуляция в конвейере', () => {
     p.mod.routes.push({ src: 0, card: 'ripples', param: 'amp', depth: 0.5 });
     const mesh = buildMesh(p);
     const def = profileById('vase');
-    // отклонение радиуса от базового профиля в кольце j
+    // the radius's deviation from the base profile in ring j
     const dev = (j: number): number => {
       let max = 0;
       const base = profileRadius(def, j / 48);
@@ -138,12 +138,12 @@ describe('модуляция в конвейере', () => {
       }
       return max;
     };
-    // v=0.25: amp ≈ 0.02+0.5·0.15 ≈ 0.095; v=0.75: amp клампится в 0
+    // v=0.25: amp ≈ 0.02+0.5·0.15 ≈ 0.095; v=0.75: amp clamped to 0
     expect(dev(12)).toBeGreaterThan(0.05);
     expect(dev(36)).toBeLessThan(0.012);
   });
 
-  it('модуляция деформера: LFO(z)→twist.turns строит валидный меш', () => {
+  it('a deformer modulated: LFO(z)→twist.turns builds a valid mesh', () => {
     const p = defaultParams();
     p.nu = 32;
     p.nv = 32;
@@ -153,7 +153,7 @@ describe('модуляция в конвейере', () => {
     for (const x of mesh.positions) expect(Number.isFinite(x)).toBe(true);
   });
 
-  it('defaultModState: 3 LFO, маршрутов нет', () => {
+  it('defaultModState: 3 LFOs, no routes', () => {
     const m = defaultModState();
     expect(m.lfos.length).toBe(3);
     expect(m.routes.length).toBe(0);

@@ -1,4 +1,4 @@
-// Фурье-профиль: формула, кламп, сборка, сериализация.
+// The Fourier profile: the formula, clamping, building, serialization.
 import { fourierRadius, DEFAULT_FOURIER_PARAMS, FOURIER_PROFILE_ID } from '../src/geo/profiles';
 import { buildMesh, defaultParams, radiusFnFor } from '../src/geo/build';
 import { validateMesh } from 'maker-kit/3d/validate';
@@ -12,18 +12,18 @@ describe('fourierRadius', () => {
     expect(fourierRadius(p, t)).toBeCloseTo(expected, 9);
   });
 
-  it('кламп: не меньше MIN_RADIUS, не больше 1', () => {
+  it('clamped: not below MIN_RADIUS, not above 1', () => {
     expect(fourierRadius({ r0: -5, a1: 0, a2: 0, a3: 0 }, 0.5)).toBeGreaterThan(0);
     expect(fourierRadius({ r0: 5, a1: 0, a2: 0, a3: 0 }, 0.5)).toBeLessThanOrEqual(1);
   });
 
-  it('пропущенные параметры берутся из дефолтов формулы', () => {
+  it("missing parameters come from the formula's defaults", () => {
     expect(Number.isFinite(fourierRadius({}, 0.3))).toBe(true);
   });
 });
 
-describe('fourier в конвейере', () => {
-  it('radiusFnFor переключается на Фурье', () => {
+describe('fourier in the pipeline', () => {
+  it('radiusFnFor switches to Fourier', () => {
     const p = defaultParams();
     p.profile = FOURIER_PROFILE_ID;
     p.fourier = { ...DEFAULT_FOURIER_PARAMS };
@@ -32,7 +32,7 @@ describe('fourier в конвейере', () => {
     expect(prof?.radiusFn(0.5)).toBeCloseTo(fourierRadius(DEFAULT_FOURIER_PARAMS, 0.5), 9);
   });
 
-  it('строится валидный закрытый меш', () => {
+  it('builds a valid closed mesh', () => {
     const p = defaultParams();
     p.profile = FOURIER_PROFILE_ID;
     p.nu = 48;
@@ -44,22 +44,22 @@ describe('fourier в конвейере', () => {
   });
 });
 
-describe('fourier и mod в состоянии', () => {
-  it('sanitize принимает fourier-профиль и параметры', () => {
+describe('fourier and mod in the state', () => {
+  it('sanitize takes the fourier profile and its parameters', () => {
     const out = sanitizeState({ profile: 'fourier', fourier: { r0: 0.25, a1: 0.2, junk: NaN } });
     expect(out?.profile).toBe('fourier');
     expect(out?.fourier?.r0).toBe(0.25);
     expect(out?.fourier?.junk).toBeUndefined();
   });
 
-  it('stateToParams мержит только известные ключи fourier', () => {
+  it('stateToParams merges only the known fourier keys', () => {
     const p = stateToParams({ fourier: { r0: 0.22, hack: 9 } });
     expect(p.fourier.r0).toBe(0.22);
     expect(p.fourier.hack).toBeUndefined();
     expect(p.fourier.a1).toBe(DEFAULT_FOURIER_PARAMS.a1);
   });
 
-  it('sanitize mod: битые маршруты отбрасываются, LFO чинятся', () => {
+  it('sanitize mod: broken routes are dropped, LFOs mended', () => {
     const out = sanitizeState({
       mod: {
         lfos: [{ source: 'z', shape: 'sine', rate: 2, phase: 0, k: 1 }, 'garbage'],
@@ -72,10 +72,10 @@ describe('fourier и mod в состоянии', () => {
     });
     expect(out?.mod?.lfos.length).toBe(3);
     expect(out?.mod?.routes.length).toBe(1);
-    expect(out?.mod?.routes[0].depth).toBe(1); // кламп depth в [-1,1]
+    expect(out?.mod?.routes[0].depth).toBe(1); // depth clamped to [-1,1]
   });
 
-  it('mod проходит через stateToParams', () => {
+  it('mod passes through stateToParams', () => {
     const p = stateToParams({
       mod: {
         lfos: [

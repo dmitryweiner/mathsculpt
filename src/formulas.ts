@@ -1,10 +1,11 @@
-// UI-схема карточек: заголовки, описания, слайдеры/селекты с диапазонами.
-// Порядок массивов = порядок карточек. Дефолты слайдеров обязаны совпадать
-// с DEFAULT_*_PARAMS ядра (сверяется тестом formulas.test.ts).
+// The cards' UI schema: titles, descriptions, sliders and selects with their
+// ranges. The arrays' order is the cards' order. The sliders' defaults must
+// match the core's DEFAULT_*_PARAMS (tests/formulas.test.ts checks).
 //
-// Тексты — ключи словаря (`card.<id>.title`, `param.<имя>`, `option.<имя>`):
-// карточки рисуют контролы кита, а они переводят при отрисовке. Чистая
-// запись формул (`n₁`, `Yₗₘ`) — готовый текст (`{ text }`), её не переводят.
+// Texts are dictionary keys (`card.<id>.title`, `param.<name>`,
+// `option.<name>`): the kit's controls draw the cards and translate when
+// they draw. Pure formula notation (`n₁`, `Yₗₘ`) is ready text (`{ text }`),
+// never translated.
 import type { Label } from 'maker-kit/core/message';
 import type { DisplaceId } from './geo/displace';
 import type { DeformId } from './geo/deform';
@@ -303,7 +304,7 @@ export const DISPLACE_CARDS: CardDef<DisplaceId>[] = [
   },
 ];
 
-/** Карточки параметров фигур-носителей (без чекбокса; видны при выборе фигуры). */
+/** The carrier shapes' parameter cards (no switch; shown for the chosen shape). */
 export const SHAPE_CARDS: CardDef<ShapeId>[] = [
   {
     id: 'torus',
@@ -344,8 +345,8 @@ export const SHAPE_CARDS: CardDef<ShapeId>[] = [
 ];
 
 /**
- * Карточка настройки формы пресет-профиля (ваза/амфора/…): множители радиуса
- * по зонам. Без чекбокса; видна при выборе пресет-профиля.
+ * The profile's shape card (vase, amphora, …): radius factors by zones. No
+ * switch; shown for a profile.
  */
 export const PROFILE_SHAPE_CARD: CardDef = {
   id: 'profileShape',
@@ -359,7 +360,7 @@ export const PROFILE_SHAPE_CARD: CardDef = {
   ],
 };
 
-/** Карточка Фурье-профиля (без чекбокса; видна при profile = fourier). */
+/** The Fourier profile's card (no switch; shown when profile = fourier). */
 export const FOURIER_CARD: CardDef = {
   id: 'fourier',
   title: 'card.fourier.title',

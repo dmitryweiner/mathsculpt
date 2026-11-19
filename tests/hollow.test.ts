@@ -1,4 +1,4 @@
-// Плоское дно тел вращения и полый сосуд (open top + wall > 0).
+// The flat base of solids of revolution and the hollow vessel (open top + wall > 0).
 import { buildMesh, defaultParams } from '../src/geo/build';
 import type { BuildParams } from '../src/geo/build';
 import { PROFILE_IDS } from '../src/geo/profiles';
@@ -15,7 +15,7 @@ function vessel(profile: string, caps: BuildParams['caps'], wall: number, ripple
   return p;
 }
 
-/** Рёбра, встречающиеся ровно в одном треугольнике (граница открытой поверхности). */
+/** Edges found in exactly one triangle (an open surface's boundary). */
 function boundaryVertexZ(mesh: { positions: Float32Array; indices: Uint32Array }): number[] {
   const nV = mesh.positions.length / 3;
   const count = new Map<number, number>();
@@ -42,39 +42,39 @@ function boundaryVertexZ(mesh: { positions: Float32Array; indices: Uint32Array }
   return zs;
 }
 
-describe('плоское дно (fade смещений у v=0)', () => {
-  it.each([...PROFILE_IDS])('%s: нижнее кольцо плоское и неискажённое при ripples', (profile) => {
+describe('a flat base (the displacements fade at v=0)', () => {
+  it.each([...PROFILE_IDS])('%s: the bottom ring is flat and undistorted with ripples', (profile) => {
     const mesh = buildMesh(vessel(profile, 'both', 0, true));
-    // первые nu вершин — кольцо j=0; z должны совпадать (плоскость), radius ровный
+    // the first nu vertices are ring j=0; their z must match (a plane), the radius even
     const nu = 48;
     const z0 = mesh.positions[2];
     let rMin = Infinity;
     let rMax = 0;
     for (let i = 0; i < nu; i++) {
       const k = i * 3;
-      expect(mesh.positions[k + 2]).toBeCloseTo(z0, 5); // плоское дно
+      expect(mesh.positions[k + 2]).toBeCloseTo(z0, 5); // a flat base
       const r = Math.hypot(mesh.positions[k], mesh.positions[k + 1]);
       rMin = Math.min(rMin, r);
       rMax = Math.max(rMax, r);
     }
-    // без искажений ripples кольцо круглое
+    // with no ripple distortion the ring is round
     expect(rMax - rMin).toBeLessThan(1e-4);
   });
 });
 
-describe('дно строится (open top, нулевая толщина)', () => {
-  it.each([...PROFILE_IDS])('%s: граница только сверху, низ закрыт', (profile) => {
+describe('the floor is built (open top, zero thickness)', () => {
+  it.each([...PROFILE_IDS])('%s: a boundary at the top only, the bottom closed', (profile) => {
     const mesh = buildMesh(vessel(profile, 'bottom', 0, true));
     const zs = boundaryVertexZ(mesh);
-    expect(zs.length).toBeGreaterThan(0); // верх открыт
+    expect(zs.length).toBeGreaterThan(0); // the top is open
     const zMinAll = Math.min(...Array.from(mesh.positions.filter((_, i) => i % 3 === 2)));
     const zMaxAll = Math.max(...Array.from(mesh.positions.filter((_, i) => i % 3 === 2)));
     const mid = (zMinAll + zMaxAll) / 2;
-    // все граничные вершины — у верхнего отверстия, не у дна
+    // every boundary vertex is at the top opening, none at the floor
     for (const z of zs) expect(z).toBeGreaterThan(mid);
   });
 
-  it('bottle: дно закрыто (нет открытой границы у z_min)', () => {
+  it('bottle: the floor is closed (no open boundary at z_min)', () => {
     const mesh = buildMesh(vessel('bottle', 'bottom', 0, true));
     const zs = boundaryVertexZ(mesh);
     const zMinAll = Math.min(...Array.from(mesh.positions.filter((_, i) => i % 3 === 2)));
@@ -82,35 +82,35 @@ describe('дно строится (open top, нулевая толщина)', ()
   });
 });
 
-describe('полый сосуд (open top + wall > 0)', () => {
-  it.each([...PROFILE_IDS])('%s: watertight-солид с положительным объёмом', (profile) => {
+describe('a hollow vessel (open top + wall > 0)', () => {
+  it.each([...PROFILE_IDS])('%s: a watertight solid with a positive volume', (profile) => {
     const report = validateMesh(buildMesh(vessel(profile, 'bottom', 0.02, true)));
     expect(report.finite).toBe(true);
     expect(report.watertight).toBe(true);
     expect(report.volume).toBeGreaterThan(0);
   });
 
-  it('полый объём заметно меньше сплошного (это оболочка + дно)', () => {
+  it('the hollow volume is well below the solid one (a shell + a floor)', () => {
     const solid = validateMesh(buildMesh(vessel('vase', 'both', 0, false)));
     const hollow = validateMesh(buildMesh(vessel('vase', 'bottom', 0.02, false)));
     expect(hollow.volume).toBeGreaterThan(0);
     expect(hollow.volume).toBeLessThan(solid.volume * 0.7);
   });
 
-  it('толщина стенки клампится долей радиуса — не пересекает ось', () => {
-    // огромная стенка не должна ломать watertight
+  it('the wall thickness is clamped by a share of the radius — it never crosses the axis', () => {
+    // a huge wall must not break watertightness
     const report = validateMesh(buildMesh(vessel('vase', 'bottom', 5, false)));
     expect(report.finite).toBe(true);
     expect(report.watertight).toBe(true);
     expect(report.volume).toBeGreaterThan(0);
   });
 
-  it('wall=0 в open top → оболочка (не watertight), wall>0 → солид (watertight)', () => {
+  it('wall=0 in open top → a shell (not watertight), wall>0 → a solid (watertight)', () => {
     expect(validateMesh(buildMesh(vessel('amphora', 'bottom', 0, false))).watertight).toBe(false);
     expect(validateMesh(buildMesh(vessel('amphora', 'bottom', 0.02, false))).watertight).toBe(true);
   });
 
-  it('внутренняя стенка имеет заданный радиальный отступ', () => {
+  it('the inner wall has the set radial offset', () => {
     const p = vessel('bottle', 'bottom', 0.02, false);
     const mesh = buildMesh(p);
     const outerCount = p.nu * (p.nv + 1);

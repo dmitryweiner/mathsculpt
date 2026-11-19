@@ -1,13 +1,14 @@
-// Точка входа: состояние → ядро геометрии → вид и панель.
+// The entry point: state → geometry core → view and panel.
 //
-// Раскладка и рамка — китовые: шапка (имя проекта открывает диалог
-// пресетов, 💾, ↶ ↷), панель сбоку от вида или нижним листом на телефоне,
-// полоса прогресса поверх вида, баннер сбоя хранилища, список сообщений в
-// карточке экспорта. Состояние одно и неизменяемое — то, что держит история
-// кита: правка панели — новое состояние, `final` делает её шагом отмены.
+// The layout and the frame are the kit's: the top bar (the project's name
+// opens the presets dialog, 💾, ↶ ↷), the panel beside the view or a bottom
+// sheet on a phone, the progress bar over the view, the storage banner, the
+// message list in the export card. The state is one and immutable — what
+// the kit's history holds: an edit in the panel is a new state, and `final`
+// makes it an undo step.
 //
-// Превью 96×96 строится в главном потоке мгновенно; полная сетка — в
-// Web Worker (паттерн mandelbulb-worker).
+// The 96×96 preview is built on the main thread at once; the full grid in a
+// Web Worker (the mandelbulb-worker pattern).
 import 'maker-kit/styles/kit.css';
 import './style.css';
 import type { MeshReport } from 'maker-kit/3d/validate';
@@ -74,27 +75,27 @@ const messages = el('messages', HTMLUListElement);
 const storageNote = el('storageNote', HTMLDivElement);
 const canvas = el('view', HTMLCanvasElement);
 const graphCanvas = el('profileGraph', HTMLCanvasElement);
-/** 3D-вид кита; null без WebGL — приложение работает и без него */
+/** the kit's 3D view; null without WebGL — the app works without it */
 const scene = createScene(canvas);
 
-// язык: сохранённый выбор → языки браузера → английский
+// the language: the stored choice → the browser's languages → English
 initLang();
 applyStaticText(document);
 
-// --- состояние: модель из браузера или по умолчанию — начало истории, а не шаг ---
+// --- the state: the model from the browser or the default — the start of the history, not a step ---
 const storage = browserStorage();
 const opening = loadRecord(storage, projectRecord);
 const history = new History<AppState>(opening?.state ?? defaultState(), HISTORY_LIMIT);
-/** параметры сборки показанного состояния (стенка уже в единицах модели) */
+/** the build parameters of the shown state (the wall already in model units) */
 let params: BuildParams = buildParamsOf(history.state);
-/** открытый пресет (`b:<id>`, `u:<id>`) или никакой */
+/** the open preset (`b:<id>`, `u:<id>`) or none */
 let presetRef: PresetRef = opening?.ref ?? '';
-/** имя, данное файлу проекта (⬇️ или открытый 📂); пусто — имя открытого пресета */
+/** the name given to the project file (⬇️ or an opened 📂); empty — the open preset's name */
 let givenName = opening?.name ?? '';
-/** JSON показанного состояния: законченная правка того же, что уже показано кадрами, не пересобирает */
+/** the shown state's JSON: a finished edit of what its frames already showed does not rebuild */
 let shown = '';
 
-/** Правка: кадр жеста (`live`) или законченная — шаг отмены (`commit`). */
+/** An edit: a frame of a gesture (`live`) or a finished one — an undo step (`commit`). */
 function edit(next: AppState, final: boolean): void {
   if (final) history.commit(next);
   else history.live(next);
@@ -102,7 +103,7 @@ function edit(next: AppState, final: boolean): void {
   if (final) saveProject();
 }
 
-/** Показывает состояние истории: панель, превью и полную сборку, кнопки отмены, ● на имени. */
+/** Shows the history's state: the panel, the preview and the full build, the undo buttons, ● on the name. */
 function show(): void {
   const state = history.state;
   panel.sync(state);
@@ -111,14 +112,14 @@ function show(): void {
   const json = JSON.stringify(state);
   if (json === shown) return;
   shown = json;
-  // модель изменилась: строка о прошлом событии (отказ файла, сбой) больше не о ней
+  // the model changed: a line about a past event (a refused file, a failure) is no longer about it
   notice = null;
   params = buildParamsOf(state);
   rebuildPreview();
   scheduleFullBuild();
 }
 
-// --- детализация полной сборки: не модель, в историю и пресеты не идёт ---
+// --- the full build's resolution: not the model, so not in the history or presets ---
 interface BuildSettings {
   resolution: string;
 }
@@ -151,7 +152,7 @@ function fullResolution(): number {
   return Number.parseInt(buildSettings.resolution, 10) || 256;
 }
 
-// --- панель: лист на телефоне; после смены языка рисуется заново ---
+// --- the panel: a sheet on a phone; drawn again after a language switch ---
 const panelHosts = {
   shape: el('shapeControls', HTMLDivElement),
   carriers: el('carrierCards', HTMLDivElement),
@@ -168,11 +169,11 @@ setupSheet({
   close: el('sheetClose', HTMLButtonElement),
   view: el('viewWrap', HTMLElement),
   narrow: matchMedia('(max-width: 1023px)'),
-  // вид ставит модель над поднятым листом
+  // the view puts the model above the raised sheet
   onInset: (px) => scene?.setInset(px),
 });
 
-// --- отмена: ↶ ↷ и Ctrl/⌘+Z на любой раскладке (китовые) ---
+// --- undo: ↶ ↷ and Ctrl/⌘+Z on any keyboard layout (the kit's) ---
 const historyKeys = bindHistory({
   undo: undoBtn,
   redo: redoBtn,
@@ -190,13 +191,13 @@ const historyKeys = bindHistory({
   canRedo: () => history.canRedo,
 });
 
-// --- что не сохранил браузер: баннер кита ---
+// --- what the browser failed to keep: the kit's banner ---
 let storageStatus: StorageStatus = { project: 'ok', preset: null };
 
 function drawBanner(): void {
   renderBanner(storageNote, storageStatus, {
     t: tr,
-    // что делать, когда браузер не хранит работу: сохранить её файлом (⬇️), слова кита
+    // what to do when the browser keeps nothing: save the work to a file (⬇️), the kit's words
     advice: { blocked: 'kit.storage.advice.file', full: 'kit.storage.advice.fileFull' },
     onDismiss: () => {
       storageStatus = { ...storageStatus, preset: null };
@@ -206,9 +207,10 @@ function drawBanner(): void {
 }
 
 /**
- * Пишет модель в браузер (с открытым пресетом и данным именем) — после
- * законченной правки, отмены, смены пресета или имени. Сбой — строкой о
- * модели в баннере, пока длится; совет кита — сохранить файлом (⬇️).
+ * Writes the model to the browser (with the open preset and the given
+ * name) after a finished edit, an undo, a change of preset or name. A
+ * failure is the model's line in the banner while it lasts; the kit's
+ * advice is to save to a file (⬇️).
  */
 function saveProject(): void {
   storageStatus = {
@@ -218,14 +220,14 @@ function saveProject(): void {
   drawBanner();
 }
 
-/** Пишет свои пресеты; сбой — в баннер, удача снимает прошлый сбой. */
+/** Writes the user's presets; a failure goes to the banner, a success clears the last one. */
 function writePresets(action: 'save' | 'delete'): void {
   const result: StorageWrite = saveRecord(storage, userPresetsRecord, userPresets);
   storageStatus = { ...storageStatus, preset: result === 'ok' ? null : { action, result } };
   drawBanner();
 }
 
-// --- пресеты: встроенные по id (`core/presets` кита), свои — запись кита, диалог кита ---
+// --- presets: built-in by id (the kit's `core/presets`), the user's in the kit's record, the kit's dialog ---
 let userPresets: SculptPreset[] = loadRecord(storage, userPresetsRecord) ?? [];
 const presetsDialog = createModal(el('presets', HTMLDivElement), { close: el('presetsClose', HTMLButtonElement) });
 const presetList = el('presetList', HTMLDivElement);
@@ -234,7 +236,7 @@ function builtinName(id: string): string {
   return tDynamic(`preset.${id}.name`);
 }
 
-/** Имя открытого пресета: встроенного — из словаря, своего — данное. */
+/** The open preset's name: a built-in one's from the dictionary, a user one's as given. */
 function currentName(): string {
   const id = presetRef.slice(2);
   if (presetRef.startsWith('b:')) return builtinName(id);
@@ -242,7 +244,7 @@ function currentName(): string {
   return '';
 }
 
-/** Имя проекта: данное файлу, иначе имя открытого пресета. */
+/** The project's name: the one given to its file, else the open preset's. */
 function projectName(): string {
   return givenName || currentName();
 }
@@ -252,7 +254,7 @@ function presetState(ref: PresetRef): AppState | undefined {
   return ref.startsWith('b:') ? presetById(id)?.build() : userPresets.find((preset) => preset.id === id)?.state;
 }
 
-/** Модель ушла от открытого пресета? Состояние — вся модель, поэтому подпись — оно целиком. */
+/** Has the model left the open preset? The state is the whole model, so the signature is all of it. */
 function currentStatus(): ReturnType<typeof presetStatus> {
   return presetStatus(presetRef, history.state, presetState, (state) => JSON.stringify(state));
 }
@@ -276,7 +278,7 @@ function drawPresetList(): void {
       presetRef = ref;
       givenName = '';
       presetsDialog.close();
-      // открыть пресет — один шаг отмены
+      // opening a preset is one undo step
       edit(state, true);
     },
     rename: (id, name) => {
@@ -299,7 +301,7 @@ presetBtn.addEventListener('click', () => {
   presetsDialog.open(presetBtn);
 });
 
-// 📄 Новое — пустой пресет кита: модель по умолчанию под именем «New model», один шаг отмены
+// 📄 New — the kit's blank preset: the default model named "New model", one undo step
 newBtn.addEventListener('click', () => {
   const blank = presetById(BLANK_ID);
   if (!blank) return;
@@ -312,7 +314,7 @@ saveBtn.addEventListener('click', () => {
   const name = window.prompt(t('presets.prompt'), projectName() || nextPresetName(userPresets, autoPresetPrefixes(), t('presets.auto')));
   if (!name) return;
   const saved = savePresetAs(userPresets, name, history.state);
-  // пресет остаётся в списке до перезагрузки, даже если браузер его не сохранил
+  // the preset stays in the list until a reload, even if the browser did not keep it
   userPresets = saved.list;
   presetRef = makePresetRef('u', saved.id);
   givenName = '';
@@ -321,7 +323,7 @@ saveBtn.addEventListener('click', () => {
   refreshPresetButton();
 });
 
-// --- модель файлом: ⬇️ сохранить, 📂 открыть (`core/projectFile` кита) ---
+// --- the model as a file: ⬇️ save, 📂 open (the kit's `core/projectFile`) ---
 const FILE_REFUSALS = { broken: 'kit.file.broken', foreign: 'kit.file.foreign', newer: 'kit.file.newer' } as const;
 
 fileSaveBtn.addEventListener('click', () => {
@@ -338,32 +340,32 @@ fileOpenBtn.addEventListener('click', () => {
     if (!file) return;
     const decoded = decodeProject(await file.text());
     if (!decoded.ok) {
-      // отказ словами кита: чужой файл не ложится дефолтами поверх работы
+      // a refusal in the kit's words: a foreign file never lays defaults over the work
       showNotice(FILE_REFUSALS[decoded.reason]);
       return;
     }
     presetRef = '';
     givenName = decoded.name;
-    // открыть файл — один шаг отмены
+    // opening a file is one undo step
     edit(decoded.state, true);
   });
 });
 
-// --- сборка: превью в главном потоке + полная сетка в воркере (очередь кита) ---
+// --- building: the preview on the main thread + the full grid in the worker (the kit's queue) ---
 const progress = createProgress(el('progressWrap', HTMLDivElement), { t: tr });
-// Vite находит и собирает воркер только по `new Worker(new URL(…))` в коде приложения
+// Vite finds and bundles a worker only by `new Worker(new URL(…))` in the app's own code
 const client = new WorkerClient<BuildJob, BuildResult>(
   moduleWorker(() => new Worker(new URL('./worker/build.worker.ts', import.meta.url), { type: 'module' })),
-  // одна дорожка: ждущая полная сборка вытесняется свежей, выгрузка (kept) — нет
+  // one lane: a waiting full build is replaced by a fresher one, an export (kept) is not
   { lane: () => 'model', kept: (job) => job.kind === 'export' },
 );
 let fullTimer: ReturnType<typeof setTimeout> | null = null;
-/** номер последней заказанной полной сборки: результат прежней устарел */
+/** the number of the latest full build ordered: an earlier one's result is stale */
 let fullSerial = 0;
-/** полная сборка показанного состояния, когда она готова */
+/** the full build of the shown state, once it is ready */
 let lastFull: BuildResult | null = null;
 
-/** Ход работы воркера — на полосу: этапы, что есть в словаре (`stage.<phase>`), с подписью. */
+/** The worker's progress on the bar: the stages the dictionary has (`stage.<phase>`) with their label. */
 function stage(p: JobProgress): JobProgress<Key> {
   const code = p.label?.code;
   return code !== undefined && hasKey(code) ? { step: p.step, total: p.total, label: { code } } : { step: p.step, total: p.total };
@@ -373,14 +375,15 @@ function messageLines(verdicts: readonly Verdict[]): { severity: Verdict['severi
   return verdicts.map((verdict) => ({ severity: verdict.severity, text: tm(verdict.message), code: verdict.message.code }));
 }
 
-/** что показано в статусе и списке — чтобы перевести его при смене языка, не пересобирая */
+/** what the status and the list show — to translate it on a language switch without a rebuild */
 let lastReport: Parameters<typeof showReport> | null = null;
-/** вердикты показанного меша */
+/** the shown mesh's verdicts */
 let verdicts: Verdict[] = [];
 /**
- * Строка о только что случившемся — отказ файла, сбой воркера, остановленная
- * выгрузка: первой в списке, пока модель не изменится. Иначе её стёр бы отчёт
- * полной сборки, что закончится секундой позже. Ключ — чтобы перевести заново.
+ * A line about what just happened — a refused file, a worker failure, an
+ * export blocked: first in the list until the model changes. Otherwise the
+ * report of a full build finishing a second later would wipe it. Kept as a
+ * key, to translate it again.
  */
 let notice: { key: Key; params?: Params } | null = null;
 
@@ -397,13 +400,13 @@ function showNotice(key: Key, params?: Params): void {
 function showReport(report: MeshReport, overhang: number, buildMs: number, resolution: number | null): void {
   lastReport = [report, overhang, buildMs, resolution];
   status.textContent = statusText(report, params, { resolution, ms: buildMs }, tr);
-  // для скриптов: какая сборка показана, на любом языке
+  // for the scripts: which build is shown, in any language
   status.dataset.build = resolution === null ? 'preview' : 'full';
   verdicts = meshVerdicts(report, params, overhang);
   drawMessages();
 }
 
-/** Сбой воркера — строкой сверху списка сообщений. */
+/** A worker failure, as a line on top of the message list. */
 function failed(key: 'build.failed' | 'export.failed', error: unknown): void {
   showNotice(key, { error: error instanceof Error ? error.message : String(error) });
 }
@@ -416,7 +419,7 @@ function startFullBuild(): void {
     .track((onProgress) => client.run(job, (p) => onProgress(stage(p))))
     .then(
       (done) => {
-        // null: свежая задача вытеснила ждущую; другой номер — модель с тех пор изменилась
+        // null: a fresher job replaced the waiting one; another number: the model changed since
         if (!done || serial !== fullSerial) return;
         lastFull = done.result;
         scene?.show(done.result.mesh);
@@ -427,8 +430,9 @@ function startFullBuild(): void {
 }
 
 function scheduleFullBuild(): void {
-  // модель или детализация изменились: готовая полная сборка устарела, идущая —
-  // тоже. Идущую воркер доделает (кит не обрывает задачу), её результат отбросится.
+  // the model or the resolution changed: the finished full build is stale, and
+  // so is a running one. The worker finishes it (the kit never interrupts a
+  // job); its result is dropped.
   lastFull = null;
   fullSerial++;
   if (fullTimer) clearTimeout(fullTimer);
@@ -438,7 +442,7 @@ function scheduleFullBuild(): void {
   }, 400);
 }
 
-/** Мгновенное превью: низкое разрешение в главном потоке, в миллиметрах. */
+/** The instant preview: a low resolution on the main thread, in millimetres. */
 function rebuildPreview(): void {
   const t0 = performance.now();
   const preview: BuildParams = { ...params, nu: PREVIEW_N, nv: PREVIEW_N };
@@ -450,7 +454,7 @@ function rebuildPreview(): void {
   if (prof) drawProfileGraph(graphCanvas, prof.radiusFn, prof.height);
 }
 
-// --- экспорт: готовая полная сборка или задача выгрузки в воркере; сито кита ---
+// --- export: the finished full build or an export job in the worker; the kit's gate ---
 async function exportStl(): Promise<void> {
   const state = history.state;
   const resolution = fullResolution();
@@ -470,7 +474,7 @@ async function exportStl(): Promise<void> {
     return;
   }
   const name = projectName() || state.profile;
-  // меш уже в миллиметрах; имя файла сохраняет буквы любого письма: «Классическая ваза» → классическая-ваза.stl
+  // the mesh is in millimetres already; the file name keeps letters of any script: "Классическая ваза" → классическая-ваза.stl
   download(stlFileName(name, 'mathsculpt'), encodeSTL(result.mesh, { brand: 'MathSculpt', name }), 'model/stl');
 }
 
@@ -478,7 +482,7 @@ exportBtn.addEventListener('click', () => {
   exportStl().catch((error: unknown) => failed('export.failed', error));
 });
 
-// --- язык: 🌐 в шапке; смена перерисовывает всё, где есть слова ---
+// --- the language: 🌐 in the top bar; a switch redraws everything with words ---
 const languagePicker = createLanguagePicker(el('topbar', HTMLElement), { locales: LANGS, current: lang(), t: tr, onChange: setLang });
 onLangChange((next) => {
   languagePicker.set(next);
@@ -493,6 +497,6 @@ onLangChange((next) => {
   if (lastReport) showReport(...lastReport);
 });
 
-// --- старт; офлайн после первого визита — только в сборке (sw.js пишет плагин Vite) ---
+// --- start; offline after a first visit in the build only (a Vite plugin writes sw.js) ---
 show();
 if (import.meta.env.PROD) registerServiceWorker(navigator, window, document);

@@ -1,12 +1,11 @@
-// Пользовательские пресеты в localStorage — запись кита (`core/storage`).
-// Чтение никогда не бросает: хранилище может быть недоступно (приватный
-// режим) или хранить мусор прошлых версий — приложение обязано открыться в
-// любом случае. Неудачная запись говорит почему (`StorageWrite`), и
-// приложение это показывает.
+// The user's presets in localStorage — the kit's record (`core/storage`).
+// Reading never throws: storage may be unavailable (a private window) or
+// hold garbage of past versions — the app must open regardless. A failed
+// write says why (`StorageWrite`), and the app shows it.
 //
-// Ключ — прежний. До кита пресеты лежали голым списком `{ name, state }` и
-// узнавались по имени: кит читает его как версию 0 и раздаёт id `u<n>`,
-// которые потом не меняются при переименовании.
+// The key is the old one. Before the kit presets were a bare list of
+// `{ name, state }` known by their names: the kit reads it as version 0 and
+// gives out `u<n>` ids, which then survive renames.
 
 import type { StoredRecord } from 'maker-kit/core/storage';
 import type { UserPreset } from 'maker-kit/core/presets';
@@ -27,8 +26,8 @@ export const userPresetsRecord: StoredRecord<SculptPreset[]> = {
 };
 
 /**
- * 💾 под именем: занятое имя заменяет тот пресет — его id и место в списке
- * остаются, как было до кита, когда пресет и был своим именем.
+ * 💾 under a name: a taken name replaces that preset — its id and place in
+ * the list stay, as before the kit, when a preset was its name.
  */
 export function savePresetAs(list: readonly SculptPreset[], name: string, state: AppState): { list: SculptPreset[]; id: string } {
   const same = list.find((preset) => preset.name === name);

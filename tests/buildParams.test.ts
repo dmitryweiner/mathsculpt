@@ -1,30 +1,30 @@
-// Состояние → параметры сборки: стенка из миллиметров переводится в
-// относительные единицы модели (ядро считает в них) только для полого тела
-// вращения.
+// State → build parameters: the wall is converted from millimetres to
+// relative model units (the core works in them), for a hollow solid of
+// revolution only.
 import { buildParamsOf, defaultState } from '../src/state/schema';
 import { radiusFnFor } from '../src/geo/build';
 
 describe('buildParamsOf', () => {
-  it('сплошная модель — без стенки', () => {
+  it('a solid model has no wall', () => {
     expect(buildParamsOf({ ...defaultState(), caps: 'both', wallMm: 3 }).wall).toBe(0);
   });
 
-  it('открытый верх тела вращения: стенка мм → единицы модели', () => {
+  it('the open top of a solid of revolution: the wall in mm → model units', () => {
     const state = { ...defaultState(), profile: 'vase', caps: 'bottom' as const, wallMm: 3, heightMm: 150 };
     const params = buildParamsOf(state);
     const modelHeight = radiusFnFor(params)?.height ?? NaN;
     expect(params.wall).toBeCloseTo((3 * modelHeight) / 150, 12);
   });
 
-  it('нулевая стенка — оболочка', () => {
+  it('a zero wall is a shell', () => {
     expect(buildParamsOf({ ...defaultState(), caps: 'bottom', wallMm: 0 }).wall).toBe(0);
   });
 
-  it('у фигур стенки нет', () => {
+  it('shapes have no wall', () => {
     expect(buildParamsOf({ ...defaultState(), profile: 'sphere', caps: 'bottom', wallMm: 3 }).wall).toBe(0);
   });
 
-  it('карточки, профиль и модуляция — из состояния', () => {
+  it('the cards, the profile and the modulation come from the state', () => {
     const base = defaultState();
     const state = {
       ...base,

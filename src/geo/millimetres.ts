@@ -1,7 +1,7 @@
-// Граница единиц. Ядро считает в относительных единицах модели; вид кита,
-// проверки и STL — в миллиметрах. Меш масштабируется целиком так, чтобы
-// его высота по z стала высотой модели в мм: пропорции те же, нормали и
-// индексы — те же массивы.
+// The boundary of units. The core works in relative model units; the kit's
+// view, the checks and the STL in millimetres. A mesh is scaled as a whole
+// so that its height in z becomes the model's height in mm: the same
+// proportions, the same normal and index arrays.
 
 import type { SurfaceMesh } from 'maker-kit/3d/mesh';
 

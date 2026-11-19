@@ -1,7 +1,8 @@
-// Профили тел вращения r(t), t ∈ [0,1] — низ→верх. Радиус в относительных
-// единицах (полная высота преcета = height тех же единиц; мм — при экспорте).
-// Пресеты — контрольные точки + кубический Эрмит с тангенсами конечных
-// разностей (гладкий C1, предсказуемый — почти без перехлёстов).
+// Profiles of solids of revolution r(t), t ∈ [0,1] bottom to top. The radius
+// is in relative units (a profile's full height = `height` in the same
+// units; mm at the boundary). The profiles are control points + a cubic
+// Hermite with finite-difference tangents (smooth C1, predictable — almost
+// no overshoot).
 
 export interface ProfilePoint {
   t: number;
@@ -10,7 +11,7 @@ export interface ProfilePoint {
 
 export interface ProfileDef {
   id: string;
-  /** высота в тех же единицах, что r (аспект фигуры) */
+  /** the height in the units of r (the shape's aspect) */
   height: number;
   points: ProfilePoint[];
 }
@@ -132,10 +133,10 @@ export function profileById(id: string): ProfileDef {
   return def;
 }
 
-const MIN_RADIUS = 0.02; // страховка от нулевой/отрицательной толщины
+const MIN_RADIUS = 0.02; // a guard against a zero or negative thickness
 
-// --- Профиль формулой: ряд Фурье r(t) = r₀ + Σ aₖ·sin(kπt + φₖ), k=1..3 ---
-// 3 гармоники дают богатое семейство «кувшинов».
+// --- A profile by formula: a Fourier series r(t) = r₀ + Σ aₖ·sin(kπt + φₖ), k=1..3 ---
+// 3 harmonics give a rich family of jugs.
 
 export const FOURIER_PROFILE_ID = 'fourier';
 export const FOURIER_HEIGHT = 1.0;
@@ -159,22 +160,22 @@ export function fourierRadius(p: Record<string, number>, t: number): number {
   return Math.min(1, Math.max(MIN_RADIUS, r));
 }
 
-// --- Настройка формы пресет-профиля: множители радиуса по зонам ---
-// Делают захардкоженные профили (ваза/амфора/…) редактируемыми: расширить/
-// сузить основание, «пузо» (широкую часть) и горлышко. Косинусные «горбы»
-// с перекрытием дают гладкий результат.
+// --- The profile's shape adjustment: radius factors by zones ---
+// They make the hard-coded profiles (vase, amphora, …) editable: widen or
+// narrow the base, the belly (the wide part) and the neck. Overlapping
+// cosine bumps give a smooth result.
 
 export const DEFAULT_PROFILE_SHAPE: Record<string, number> = { base: 0, belly: 0, neck: 0 };
 
-// косинусный горб: 1 в центре зоны → 0 на её краю (x — норм. расстояние 0..1)
+// a cosine bump: 1 at the zone's centre → 0 at its edge (x — the normalised distance 0..1)
 function zoneBump(x: number): number {
   const t = Math.min(1, Math.max(0, x));
   return 0.5 * (1 + Math.cos(Math.PI * t));
 }
 
-const SHAPE_BAND = 0.5; // ширина зоны влияния по t
+const SHAPE_BAND = 0.5; // the width of a zone's influence in t
 
-/** Множитель радиуса профиля от формы: 1 + base·w₀ + belly·w½ + neck·w₁. */
+/** The profile's radius factor of the shape: 1 + base·w₀ + belly·w½ + neck·w₁. */
 export function profileShapeFactor(p: Record<string, number>, t: number): number {
   const g = (k: string): number => (Number.isFinite(p[k]) ? p[k] : 0);
   const wBase = zoneBump(t / SHAPE_BAND);
@@ -183,12 +184,12 @@ export function profileShapeFactor(p: Record<string, number>, t: number): number
   return 1 + g('base') * wBase + g('belly') * wBelly + g('neck') * wNeck;
 }
 
-/** Радиус пресет-профиля с учётом настройки формы, с нижним клампом. */
+/** A profile's radius with the shape adjustment, clamped from below. */
 export function shapedProfileRadius(def: ProfileDef, shape: Record<string, number>, t: number): number {
   return Math.max(MIN_RADIUS, profileRadius(def, t) * profileShapeFactor(shape, t));
 }
 
-/** Кубический Эрмит по контрольным точкам; вне [0,1] — крайние значения. */
+/** A cubic Hermite over the control points; outside [0,1] — the end values. */
 export function profileRadius(def: ProfileDef, t: number): number {
   const pts = def.points;
   if (t <= pts[0].t) return Math.max(MIN_RADIUS, pts[0].r);
@@ -201,7 +202,7 @@ export function profileRadius(def: ProfileDef, t: number): number {
   const p0 = pts[Math.max(0, s - 1)];
   const p3 = pts[Math.min(pts.length - 1, s + 2)];
   const h = p2.t - p1.t;
-  // тангенсы конечных разностей (несимметричная сетка узлов)
+  // finite-difference tangents (an uneven grid of nodes)
   const m1 = (p2.r - p0.r) / (p2.t - p0.t);
   const m2 = (p3.r - p1.r) / (p3.t - p1.t);
   const x = (t - p1.t) / h;

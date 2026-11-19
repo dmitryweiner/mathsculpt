@@ -1,6 +1,6 @@
-// Строки панели — данные для контролов кита: что каждая читает из
-// состояния и какое новое состояние даёт. Состояние неизменяемо: правка
-// возвращает новое и не трогает старое.
+// The panel's rows are data for the kit's controls: what each reads in the
+// state and what new state it gives. The state is immutable: an edit
+// returns a new one and leaves the old one alone.
 import { DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, PROFILE_SHAPE_CARD, SHAPE_CARDS } from '../src/formulas';
 import { MOD_TARGETS, LFO_COUNT } from '../src/geo/mod';
 import { PROFILE_IDS, FOURIER_PROFILE_ID } from '../src/geo/profiles';
@@ -36,9 +36,9 @@ function shown(r: Row, state: AppState): boolean {
   return r.when ? r.when(state) : true;
 }
 
-describe('строки карточек эффектов', () => {
+describe('the rows of effect cards', () => {
   it.each([...DISPLACE_CARDS, ...DEFORM_CARDS].map((def) => [def.id, def] as const))(
-    '%s: галочка, затем селекты и ползунки схемы',
+    '%s: the switch, then the schema selects and sliders',
     (_id, def) => {
       const rows = effectRows(def);
       expect(rows.map((r) => r.key)).toEqual(['on', ...(def.selects ?? []).map((s) => s.k), ...def.sliders.map((s) => s.k)]);
@@ -49,7 +49,7 @@ describe('строки карточек эффектов', () => {
     },
   );
 
-  it('галочка включает карточку, не трогая остальное', () => {
+  it('the switch turns the card on, touching nothing else', () => {
     const before = defaultState();
     const on = row(effectRows(DEFORM_CARDS[0]), 'on');
     if (on.kind !== 'check') throw new Error('not a check');
@@ -59,7 +59,7 @@ describe('строки карточек эффектов', () => {
     expect(after.displace).toBe(before.displace);
   });
 
-  it('ползунок меняет свой параметр и только его', () => {
+  it('a slider changes its parameter and only it', () => {
     const before = defaultState();
     const after = setNumber(row(effectRows(DISPLACE_CARDS[0]), 'amp'), before, 0.07);
     expect(after.displace.ripples?.params.amp).toBe(0.07);
@@ -69,7 +69,7 @@ describe('строки карточек эффектов', () => {
     expect(after.deform).toBe(before.deform);
   });
 
-  it('селект хранит число, показывает строку', () => {
+  it('a select stores a number, shows a string', () => {
     const waves = DISPLACE_CARDS.find((d) => d.id === 'waves');
     if (!waves) throw new Error('no waves');
     const shape = row(effectRows(waves), 'shape');
@@ -79,8 +79,8 @@ describe('строки карточек эффектов', () => {
   });
 });
 
-describe('карточки носителя', () => {
-  it('без галочки; правят свои параметры', () => {
+describe('carrier cards', () => {
+  it('no switch; they edit their own parameters', () => {
     for (const def of [PROFILE_SHAPE_CARD, FOURIER_CARD, ...SHAPE_CARDS]) {
       expect(carrierRows(def).map((r) => r.key)).toEqual(def.sliders.map((s) => s.k));
     }
@@ -95,15 +95,15 @@ describe('карточки носителя', () => {
   });
 });
 
-describe('строки «Shape»', () => {
-  it('профиль: все профили, Фурье и фигуры', () => {
+describe('the Shape rows', () => {
+  it('profile: every profile, Fourier and the shapes', () => {
     const profile = row(SHAPE_ROWS, 'profile');
     if (profile.kind !== 'select' || typeof profile.options === 'function') throw new Error('profile');
     expect(profile.options.map((o) => o.value)).toEqual([...PROFILE_IDS, FOURIER_PROFILE_ID, ...SHAPE_IDS]);
     expect(setString(profile, defaultState(), 'torus').profile).toBe('torus');
   });
 
-  it('стенка видна только у полого тела вращения', () => {
+  it('the wall shows for a hollow solid of revolution only', () => {
     const wall = row(SHAPE_ROWS, 'wall');
     const s0 = defaultState();
     expect(shown(wall, { ...s0, caps: 'both' })).toBe(false);
@@ -112,7 +112,7 @@ describe('строки «Shape»', () => {
     expect(setNumber(wall, s0, 3.4).wallMm).toBe(3.4);
   });
 
-  it('режим и высота', () => {
+  it('mode and height', () => {
     const s0 = defaultState();
     expect(setString(row(SHAPE_ROWS, 'caps'), s0, 'bottom').caps).toBe('bottom');
     const height = row(SHAPE_ROWS, 'height');
@@ -121,8 +121,8 @@ describe('строки «Shape»', () => {
   });
 });
 
-describe('модуляция', () => {
-  it('строки LFO правят свой LFO; k — только у спирали', () => {
+describe('modulation', () => {
+  it('LFO rows edit their own LFO; k only for the spiral', () => {
     const s0 = defaultState();
     const rows = lfoRows(1);
     const after = setNumber(row(rows, 'rate'), s0, 4);
@@ -134,7 +134,7 @@ describe('модуляция', () => {
     expect(LFO_COUNT).toBe(s0.mod.lfos.length);
   });
 
-  it('строки маршрута: источник, цель из MOD_TARGETS, глубина', () => {
+  it('route rows: the source, a target from MOD_TARGETS, the depth', () => {
     const base = defaultState();
     const s0 = { ...base, mod: { ...base.mod, routes: [{ src: 0, card: 'ripples', param: 'amp', depth: 0.5 }] } };
     const rows = routeRows(0, t);

@@ -1,6 +1,6 @@
-// Граница единиц: ядро считает в относительных единицах, вид и STL — в
-// миллиметрах. Меш масштабируется целиком так, чтобы его высота стала
-// высотой модели в мм; STL кита пишет миллиметры как есть.
+// The boundary of units: the core works in relative units, the view and the
+// STL in millimetres. A mesh is scaled as a whole so that its height becomes
+// the model's height in mm; the kit's STL writes millimetres as they are.
 import { encodeSTL, parseSTL } from 'maker-kit/3d/stl';
 import { buildMesh } from '../src/geo/build';
 import { toMillimetres } from '../src/geo/millimetres';
@@ -23,7 +23,7 @@ function extents(positions: Float32Array): [number, number, number] {
 }
 
 describe('toMillimetres', () => {
-  it('высота меша — высота модели в мм, пропорции те же', () => {
+  it('the mesh height is the model height in mm, the proportions the same', () => {
     const [x, y, z] = extents(model.positions);
     const mm = toMillimetres(model, 150);
     const [mx, my, mz] = extents(mm.positions);
@@ -32,7 +32,7 @@ describe('toMillimetres', () => {
     expect(my / mz).toBeCloseTo(y / z, 5);
   });
 
-  it('индексы и нормали те же, исходный меш не тронут', () => {
+  it('the same indices and normals, the source mesh untouched', () => {
     const before = model.positions.slice();
     const mm = toMillimetres(model, 120);
     expect(mm.indices).toBe(model.indices);
@@ -40,7 +40,7 @@ describe('toMillimetres', () => {
     expect(model.positions).toEqual(before);
   });
 
-  it('STL кита пишет миллиметры: разобранный файл той же высоты', () => {
+  it('the kit STL writes millimetres: the parsed file has the same height', () => {
     const parsed = parseSTL(encodeSTL(toMillimetres(model, 90), { brand: 'MathSculpt', name: 'vase' }));
     expect(extents(parsed.positions)[2]).toBeCloseTo(90, 3);
     expect(parsed.indices.length).toBe(model.indices.length);

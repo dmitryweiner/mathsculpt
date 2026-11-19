@@ -1,17 +1,18 @@
 /*
- * Своё поверх кита (maker-kit/styles/kit.css импортируется первым и лежит в
- * @layer kit — любое правило здесь его побеждает). Рамка — шапка, панель и
- * лист, диалог, баннер, полоса прогресса, карточки и строки, список
- * маршрутов, список сообщений — китовая; здесь палитра и то, чего у кита
- * нет: заголовки групп, график профиля, бейдж ∿, строка статуса. От
- * телефона вверх, логическими свойствами.
+ * The app's own over the kit's (maker-kit/styles/kit.css is imported first
+ * and lives in @layer kit — any rule here wins over it). The frame — the top
+ * bar, the panel and the sheet, the dialog, the banner, the progress bar,
+ * the cards and rows, the routes list, the message list — is the kit's;
+ * here are the palette and what the kit has not: the group titles, the
+ * profile graph, the ∿ badge, the status line. Mobile first, logical
+ * properties.
  */
 
 :root {
   /*
-   * Своя голубая палитра поверх токенов кита: тёмные нейтральные и акцент
-   * #58a6ff, как было до кита. Остальное — плотность, отступы, шрифт —
-   * китовое.
+   * The app's blue palette over the kit's tokens: dark neutrals and the
+   * #58a6ff accent, as before the kit. The rest — density, spacing, the
+   * font — is the kit's.
    */
   --bg: #0d1117;
   --panel: #161b22;
@@ -26,7 +27,7 @@
   --overlay: rgb(13 17 23 / 75%);
 }
 
-/* заголовок группы карточек: «Displacements», «Deformers» */
+/* a group of cards' title: "Displacements", "Deformers" */
 .group-title {
   margin: var(--space-3) 2px 6px;
   font-size: var(--font-tiny);
@@ -35,7 +36,7 @@
   color: var(--muted);
 }
 
-/* подзаголовок внутри карточки: «LFO 1», «Routes» в модуляции */
+/* a subtitle inside a card: "LFO 1", "Routes" in modulation */
 .sub-title {
   margin: var(--space-3) 0 var(--space-1);
   font-size: var(--font-tiny);
@@ -43,7 +44,7 @@
   color: var(--accent);
 }
 
-/* ∿ у имени ползунка, который двигает LFO */
+/* ∿ by the name of a slider an LFO moves */
 .mod-badge {
   color: var(--accent);
   font-weight: 700;
@@ -56,7 +57,7 @@
   margin-block-start: 6px;
 }
 
-/* строка статуса под кнопкой экспорта: треугольники, замкнутость, сборка, время */
+/* the status line under the export button: triangles, closedness, the build, the time */
 #status {
   margin: var(--space-2) 2px 0;
   color: var(--muted);

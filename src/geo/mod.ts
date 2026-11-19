@@ -1,8 +1,9 @@
-// Пространственные LFO + матрица модуляции (порт идей src/dsp/mod.ts из
-// formula-synth). Аргумент LFO — не время, а координата точки поверхности:
-// z (v), азимут θ, спираль z+k·θ, радиус от оси, расстояние от центра.
-// Значение LFO — чистая функция точки: результат детерминирован, превью
-// статично, вместо времени — слайдер фазы.
+// Spatial LFOs + the modulation matrix (the ideas of formula-synth's
+// src/dsp/mod.ts). An LFO's argument is not time but a coordinate of the
+// surface point: z (v), the azimuth θ, a spiral z+k·θ, the radius from the
+// axis, the distance from the centre. An LFO's value is a pure function of
+// the point: the result is deterministic, the preview static, and a phase
+// slider stands in for time.
 
 import { DISPLACE_CARDS, DEFORM_CARDS } from '../formulas';
 
@@ -12,22 +13,22 @@ export type LfoSource = 'z' | 'theta' | 'spiral' | 'radius' | 'dist';
 export interface SpatialLfoDef {
   source: LfoSource;
   shape: LfoShape;
-  /** периодов на диапазон координаты (для θ/спирали целые → бесшовно) */
+  /** periods over the coordinate's range (whole ones for θ/spiral → seamless) */
   rate: number;
-  /** 0–1, доля цикла — «замена времени» */
+  /** 0–1, a share of the cycle — what stands in for time */
   phase: number;
-  /** спираль: координата = v + k·θ/2π */
+  /** a spiral: the coordinate = v + k·θ/2π */
   k: number;
 }
 
 export interface ModRoute {
-  /** индекс LFO в пуле */
+  /** the LFO's index in the pool */
   src: number;
-  /** id карточки-приёмника (смещение или деформер) */
+  /** the id of the receiving card (a displacement or a deformer) */
   card: string;
-  /** ключ параметра карточки */
+  /** the card parameter's key */
   param: string;
-  /** биполярно, доля диапазона [-1, 1] */
+  /** bipolar, a share of the range [-1, 1] */
   depth: number;
 }
 
@@ -57,9 +58,9 @@ export function defaultModState(): ModState {
   return { lfos: Array.from({ length: LFO_COUNT }, defaultLfo), routes: [] };
 }
 
-// --- Допустимые цели модуляции: карточка.параметр → диапазон (кламп) ---
-// Диапазоны обязаны совпадать со слайдерами UI-схемы (сверяется тестом).
-// exp — модуляция в октавах для «частотных» параметров с min > 0.
+// --- The allowed modulation targets: card.parameter → range (clamped) ---
+// The ranges must match the UI schema's sliders (a test checks).
+// exp — modulation in octaves for "frequency" parameters with min > 0.
 export interface ModTarget {
   card: string;
   param: string;
@@ -94,7 +95,7 @@ function clamp(x: number, a: number, b: number): number {
   return Math.max(a, Math.min(b, x));
 }
 
-// Детерминированный хэш целого → [0,1) (один шаг mulberry32) — для S&H.
+// A deterministic hash of an integer → [0,1) (one mulberry32 step) — for S&H.
 function hash01(n: number): number {
   let a = (n | 0) >>> 0;
   a = (a + 0x6d2b79f5) >>> 0;
@@ -103,16 +104,16 @@ function hash01(n: number): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-/** Контекст модели для нормировки координат radius/dist. */
+/** The model's context for normalising the radius/dist coordinates. */
 export interface ModContext {
-  /** высота модели в единицах профиля */
+  /** the model's height in profile units */
   height: number;
 }
 
 /**
- * Нормированная координата-источник ∈ ℝ (целая часть = номер цикла при
- * rate=1): z → v, θ → u/2π, спираль → v + k·u/2π, радиус → r/0.5,
- * расстояние от центра → d/(height/2).
+ * The normalised source coordinate ∈ ℝ (its integer part is the cycle's
+ * number at rate=1): z → v, θ → u/2π, a spiral → v + k·u/2π, the radius →
+ * r/0.5, the distance from the centre → d/(height/2).
  */
 export function lfoCoord(lfo: SpatialLfoDef, u: number, v: number, px: number, py: number, pz: number, ctx: ModContext): number {
   switch (lfo.source) {
@@ -129,7 +130,7 @@ export function lfoCoord(lfo: SpatialLfoDef, u: number, v: number, px: number, p
   }
 }
 
-/** Значение LFO в точке → [-1, 1]. */
+/** The LFO's value at a point → [-1, 1]. */
 export function lfoValueAt(lfo: SpatialLfoDef, u: number, v: number, px: number, py: number, pz: number, ctx: ModContext): number {
   const ph = lfo.rate * lfoCoord(lfo, u, v, px, py, pz, ctx) + lfo.phase;
   const frac = ph - Math.floor(ph); // [0, 1)
@@ -148,8 +149,9 @@ export function lfoValueAt(lfo: SpatialLfoDef, u: number, v: number, px: number,
 }
 
 /**
- * Эффективное значение параметра: база + биполярная доля диапазона · LFO,
- * кламп в [min, max]. Для exp-параметров (min > 0) — маппинг в октавах.
+ * A parameter's effective value: the base + a bipolar share of the range ·
+ * LFO, clamped to [min, max]. For exp parameters (min > 0) — a mapping in
+ * octaves.
  */
 export function effectiveParam(base: number, l: number, depth: number, range: readonly [number, number], exp: boolean): number {
   const [min, max] = range;

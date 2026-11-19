@@ -1,15 +1,15 @@
-// Сериализация состояния: sanitize, round-trip через JSON.
+// Serializing the state: sanitize, a round trip through JSON.
 import { completeState, sanitizeState, stateToParams, paramsToState } from '../src/state/schema';
 import { defaultParams } from '../src/geo/build';
 
 describe('sanitizeState', () => {
-  it('отбрасывает мусорные типы', () => {
+  it('drops garbage types', () => {
     expect(sanitizeState(null)).toBeNull();
     expect(sanitizeState(42)).toBeNull();
     expect(sanitizeState('x')).toBeNull();
   });
 
-  it('фильтрует неизвестные профили/крышки/карточки', () => {
+  it('filters unknown profiles, caps and cards', () => {
     const out = sanitizeState({
       profile: 'nope',
       caps: 'weird',
@@ -25,13 +25,13 @@ describe('sanitizeState', () => {
     expect(out?.displace?.ripples?.params?.evil).toBeUndefined();
   });
 
-  it('heightMm клампится в [5, 400]', () => {
+  it('heightMm is clamped to [5, 400]', () => {
     expect(sanitizeState({ heightMm: 9000 })?.heightMm).toBe(400);
     expect(sanitizeState({ heightMm: -3 })?.heightMm).toBe(5);
     expect(sanitizeState({ heightMm: NaN })?.heightMm).toBeUndefined();
   });
 
-  it('wallMm клампится в [0, 20]', () => {
+  it('wallMm is clamped to [0, 20]', () => {
     expect(sanitizeState({ wallMm: 100 })?.wallMm).toBe(20);
     expect(sanitizeState({ wallMm: -1 })?.wallMm).toBe(0);
     expect(sanitizeState({ wallMm: 2.5 })?.wallMm).toBe(2.5);
@@ -40,7 +40,7 @@ describe('sanitizeState', () => {
 });
 
 describe('stateToParams', () => {
-  it('частичное состояние ложится поверх дефолтов', () => {
+  it('a partial state lies over the defaults', () => {
     const p = stateToParams({
       profile: 'bowl',
       displace: { noise: { on: true, params: { amp: 0.05 } } },
@@ -48,18 +48,18 @@ describe('stateToParams', () => {
     expect(p.profile).toBe('bowl');
     expect(p.displace.noise.on).toBe(true);
     expect(p.displace.noise.params.amp).toBe(0.05);
-    // незатронутые параметры — дефолтные
+    // untouched parameters are the defaults
     expect(p.displace.noise.params.scale).toBe(defaultParams().displace.noise.params.scale);
     expect(p.displace.ripples.on).toBe(true);
   });
 
-  it('чужие ключи параметров не просачиваются', () => {
+  it('foreign parameter keys do not leak through', () => {
     const p = stateToParams({ displace: { ripples: { params: { amp: 0.1, hack: 99 } } } });
     expect(p.displace.ripples.params.amp).toBe(0.1);
     expect(p.displace.ripples.params.hack).toBeUndefined();
   });
 
-  it('клампит параметры по диапазонам карточек', () => {
+  it('clamps parameters to the cards ranges', () => {
     const p = stateToParams({
       displace: {
         ripples: { params: { amp: 999, freqU: -4 } },
@@ -81,7 +81,7 @@ describe('stateToParams', () => {
 });
 
 describe('JSON round-trip', () => {
-  it('состояние переживает JSON и разбор без потерь', () => {
+  it('the state survives JSON and parsing with no loss', () => {
     const params = defaultParams();
     params.profile = 'goblet';
     params.displace.harmonics.on = true;
@@ -93,7 +93,7 @@ describe('JSON round-trip', () => {
     expect(back).toEqual(state);
   });
 
-  it('имя пресета из старых записей не попадает в состояние', () => {
+  it('a preset name from old records does not get into the state', () => {
     expect(sanitizeState({ ...paramsToState(defaultParams(), 120, 2), presetName: 'Old' })).not.toHaveProperty('presetName');
   });
 });

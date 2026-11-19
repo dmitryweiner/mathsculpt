@@ -1,7 +1,8 @@
-// Деформеры позиций (аналог FX-цепочки): применяются к сетке целиком после
-// смещений, по порядку. Работают на Grid (знают v = j/nv и замкнутость по u).
-// evalAt — необязательный расчёт эффективных параметров в точке (матрица
-// модуляции); без него параметры статичны.
+// Position deformers (the counterpart of an FX chain): applied to the whole
+// grid after the displacements, in order. They work on a Grid (they know
+// v = j/nv and that u is closed). evalAt is the optional computation of the
+// effective parameters at a point (the modulation matrix); without it the
+// parameters are static.
 
 import type { Grid } from './surface';
 import { gridRows } from './surface';
@@ -28,7 +29,7 @@ export function isDeformId(x: string): x is DeformId {
   return DEFORM_IDS.some((id) => id === x);
 }
 
-/** Дефолты параметров = дефолты слайдеров UI-схемы (сверяется тестом). */
+/** The parameters' defaults = the UI schema's slider defaults (a test checks). */
 export const DEFAULT_DEFORM_PARAMS: Record<DeformId, Params> = {
   twist: { turns: 0.25 },
   taper: { amount: 0.3, power: 1 },
@@ -45,12 +46,12 @@ export const DEFAULT_DEFORM_PARAMS: Record<DeformId, Params> = {
   taubin: { iterations: 2, lambda: 0.5, mu: -0.53 },
 };
 
-/** Эффективные параметры в точке (u, v, P) — для модуляции. */
+/** The effective parameters at a point (u, v, P) — for modulation. */
 export type ParamEval = (u: number, v: number, px: number, py: number, pz: number) => Params;
 
 const num = (p: Params, k: string, d: number): number => (Number.isFinite(p[k]) ? p[k] : d);
 
-/** Спиральный перекрут: поворот xy на 2π·turns·v. */
+/** A spiral twist: xy rotated by 2π·turns·v. */
 function twist(grid: Grid, p: Params, evalAt?: ParamEval): void {
   const { nu, nv, positions } = grid;
   const rows = gridRows(grid);
@@ -71,7 +72,7 @@ function twist(grid: Grid, p: Params, evalAt?: ParamEval): void {
   }
 }
 
-/** Сужение по v: масштаб xy на 1 − amount·vᵖ (amount < 0 — расширение). */
+/** A taper along v: xy scaled by 1 − amount·vᵖ (amount < 0 widens). */
 function taper(grid: Grid, p: Params, evalAt?: ParamEval): void {
   const { nu, nv, positions } = grid;
   const rows = gridRows(grid);
@@ -91,10 +92,10 @@ function taper(grid: Grid, p: Params, evalAt?: ParamEval): void {
 }
 
 /**
- * Симметрия k-fold: усреднение по k поворотам на 2π/k («гончарная»
- * правильность), mix — доля симметризованной формы. Дробные колонки
- * берутся линейной интерполяцией по кольцу. Модулируется только mix —
- * k дискретен и фиксируется базовым параметром.
+ * k-fold symmetry: the average over k rotations by 2π/k (a potter's
+ * regularity); mix is the share of the symmetrised form. Fractional columns
+ * are interpolated linearly around the ring. Only mix is modulated — k is
+ * discrete and fixed by the base parameter.
  */
 function symmetry(grid: Grid, p: Params, evalAt?: ParamEval): void {
   const k = Math.max(1, Math.round(num(p, 'k', 6)));
@@ -112,7 +113,7 @@ function symmetry(grid: Grid, p: Params, evalAt?: ParamEval): void {
         ay = 0,
         az = 0;
       for (let m = 0; m < k; m++) {
-        // точка кольца на угле u + m·2π/k, повёрнутая назад на −m·2π/k
+        // the ring's point at the angle u + m·2π/k, turned back by −m·2π/k
         const col = i + (m * nu) / k;
         const c0 = Math.floor(col);
         const frac = col - c0;
@@ -140,8 +141,9 @@ function symmetry(grid: Grid, p: Params, evalAt?: ParamEval): void {
 }
 
 /**
- * Лапласово сглаживание сетки: P += λ·(среднее 4 соседей − P), 1–5 итераций.
- * Соседи по u — с заворотом; по v — кламп на краях (или заворот при wrapV).
+ * Laplacian smoothing of the grid: P += λ·(the mean of 4 neighbours − P),
+ * 1–5 iterations. Neighbours in u wrap around; in v they clamp at the edges
+ * (or wrap with wrapV).
  */
 function smooth(grid: Grid, p: Params): void {
   const iterations = Math.max(1, Math.min(5, Math.round(num(p, 'iterations', 2))));
@@ -170,7 +172,7 @@ function smooth(grid: Grid, p: Params): void {
   }
 }
 
-/** Квантование позиций к шагу — вокселизация/лоуполи. */
+/** Positions snapped to a step — a voxel / low-poly look. */
 function quantize(grid: Grid, p: Params): void {
   const step = Math.max(0.002, num(p, 'step', 0.02));
   const { positions } = grid;

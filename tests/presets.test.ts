@@ -1,49 +1,49 @@
-// Встроенные пресеты: id уникальны, имя каждого — в словаре
-// (`preset.<id>.name`), состояние проходит sanitize без потерь (все
-// id/ключи валидны) и собирается в валидный закрытый меш.
+// Built-in presets: unique ids, each one's name in the dictionary
+// (`preset.<id>.name`), the state passes sanitize with no loss (every id and
+// key valid) and builds a valid closed mesh.
 import { BLANK_ID, PRESETS, PRESET_STATES, presetById } from '../src/state/presets';
 import { completeState, defaultState, sanitizeState, stateToParams } from '../src/state/schema';
 import { buildMesh } from '../src/geo/build';
 import { validateMesh } from 'maker-kit/3d/validate';
 import { en } from '../src/i18n/en';
 
-describe('встроенные пресеты', () => {
-  it('id уникальны и в виде слага', () => {
+describe('built-in presets', () => {
+  it('ids are unique slugs', () => {
     const ids = PRESETS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 
-  it('у каждого есть имя в словаре', () => {
+  it('each has a name in the dictionary', () => {
     for (const { id } of PRESETS) expect(Object.hasOwn(en, `preset.${id}.name`), id).toBe(true);
   });
 
-  it('📄 Новое — пустой пресет: модель по умолчанию, не в списке', () => {
+  it('📄 New is the blank preset: the default model, not listed', () => {
     const blank = presetById(BLANK_ID);
     expect(blank?.listed).toBe(false);
     expect(blank?.build()).toEqual(defaultState());
     expect(PRESETS.filter((p) => p.listed !== false).map((p) => p.id)).toEqual(Object.keys(PRESET_STATES));
   });
 
-  it('presetById находит пресет и не находит чужой', () => {
+  it('presetById finds a preset and no foreign one', () => {
     expect(presetById('classic-vase')?.id).toBe('classic-vase');
     expect(presetById('nope')).toBeUndefined();
   });
 
-  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: sanitize ничего не отбрасывает', (id) => {
+  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: sanitize drops nothing', (id) => {
     const partial = PRESET_STATES[id];
     expect(sanitizeState(partial)).toEqual(partial);
   });
 
-  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: полное состояние — дефолты под пресетом', (id) => {
+  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: the whole state is the defaults under the preset', (id) => {
     const state = presetById(id)?.build();
     expect(state).toEqual(completeState(PRESET_STATES[id] ?? {}));
-    // высоту и стенку пресеты не задают: берутся дефолтные
+    // presets set no height or wall: the defaults are taken
     expect(state?.heightMm).toBe(defaultState().heightMm);
     expect(state?.wallMm).toBe(defaultState().wallMm);
   });
 
-  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: строится валидный закрытый меш', (id) => {
+  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: builds a valid closed mesh', (id) => {
     const params = stateToParams(PRESET_STATES[id] ?? {});
     params.nu = 48;
     params.nv = 48;
@@ -51,7 +51,7 @@ describe('встроенные пресеты', () => {
     expect(report.finite).toBe(true);
     expect(report.watertight).toBe(true);
     expect(report.volume).toBeGreaterThan(0);
-    // quantize по построению схлопывает часть треугольников в плоские
+    // quantize collapses some triangles flat by its nature
     if (!params.deform.quantize.on) expect(report.degenerateTriangles).toBe(0);
   });
 });

@@ -1,6 +1,7 @@
-// Язык интерфейса: словари, выбор языка, шаблоны — и сторож от
-// непереведённого текста: первая строка, написанная мимо словаря, тихо
-// осталась бы английской в русском интерфейсе; здесь она ловится.
+// The interface language: the dictionaries, the choice of language, the
+// templates — and the guard against untranslated text: the first line
+// written past the dictionary would quietly stay English in the Russian
+// interface; it is caught here.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { kitMessages } from 'maker-kit/i18n/index';
@@ -11,29 +12,29 @@ import { PRESETS } from '../src/state/presets';
 const KEYS = Object.keys(DICTS.en).filter(hasKey);
 const FOREIGN = /[А-Яа-яЁёЇїІіЄєҐґ֐-׿]/;
 
-describe('словари', () => {
-  it('в каждом языке ровно ключи английского', () => {
+describe('dictionaries', () => {
+  it('every language has exactly the keys of English', () => {
     for (const lang of LANGS) expect(Object.keys(DICTS[lang]).toSorted(), lang).toEqual(KEYS.toSorted());
   });
 
-  it('строки кита — как у кита', () => {
+  it('the kit strings are as the kit has them', () => {
     for (const lang of LANGS) {
       for (const [key, text] of Object.entries(kitMessages[lang])) expect(Reflect.get(DICTS[lang], key), `${lang}:${key}`).toBe(text);
     }
   });
 
-  it('пустых строк нет', () => {
+  it('no empty strings', () => {
     for (const lang of LANGS) {
       for (const key of KEYS) expect(DICTS[lang][key].trim().length, `${lang}:${key}`).toBeGreaterThan(0);
     }
   });
 
-  it('в английском нет кириллицы и иврита', () => {
+  it('English has no Cyrillic or Hebrew', () => {
     for (const key of KEYS) expect(DICTS.en[key], key).not.toMatch(FOREIGN);
   });
 
-  it('переведено: русский, украинский и иврит не повторяют английский там, где в нём есть слова', () => {
-    // формулы, обозначения и имена собственные одинаковы во всех языках
+  it('translated: Russian, Ukrainian and Hebrew do not repeat English where it has words', () => {
+    // formulas, notation and proper names are the same in every language
     const same = new Set([
       'lfo.shape.random',
       'mod.route.src',
@@ -51,7 +52,7 @@ describe('словари', () => {
     }
   });
 
-  it('в одном слове не смешаны латиница и кириллица (латинская «e» в русском слове)', () => {
+  it('no word mixes Latin and Cyrillic (a Latin "e" in a Russian word)', () => {
     for (const lang of LANGS) {
       for (const key of KEYS) {
         for (const word of DICTS[lang][key].split(/[^\p{L}]+/u)) {
@@ -61,7 +62,7 @@ describe('словари', () => {
     }
   });
 
-  it('в каждом языке те же параметры шаблонов', () => {
+  it('every language uses the same template parameters', () => {
     for (const lang of LANGS) {
       for (const key of KEYS) {
         expect([...new Set(placeholders(DICTS[lang][key]))], `${lang}:${key}`).toEqual([...new Set(placeholders(DICTS.en[key]))]);
@@ -69,7 +70,7 @@ describe('словари', () => {
     }
   });
 
-  it('формы множественного: столько, сколько у языка категорий для целых', () => {
+  it('plural forms: as many as the language has categories for whole numbers', () => {
     const forms = (template: string): number[] =>
       [...template.matchAll(/\{\w+\|([^}]*)\}/g)].map((match) => (match[1] ?? '').split('|').length);
     for (const lang of LANGS) {
@@ -79,7 +80,7 @@ describe('словари', () => {
     }
   });
 
-  it('имена встроенных пресетов различны в каждом языке, и из любого выходит имя файла', () => {
+  it('built-in preset names are distinct in every language, and each makes a file name', () => {
     for (const lang of LANGS) {
       const names = PRESETS.map((preset) => Reflect.get(DICTS[lang], `preset.${preset.id}.name`));
       expect(new Set(names).size, lang).toBe(PRESETS.length);
@@ -89,7 +90,7 @@ describe('словари', () => {
 });
 
 describe('detectLang', () => {
-  it('первый поддержанный язык браузера, иначе английский', () => {
+  it('the first supported language of the browser, English otherwise', () => {
     expect(detectLang(['ru-RU', 'en-US'], null)).toBe('ru');
     expect(detectLang(['uk-UA'], null)).toBe('uk');
     expect(detectLang(['he-IL'], null)).toBe('he');
@@ -99,7 +100,7 @@ describe('detectLang', () => {
     expect(detectLang([], null)).toBe('en');
   });
 
-  it('сохранённый выбор важнее браузера, мусор в хранилище — нет', () => {
+  it('a stored choice beats the browser, garbage in storage does not', () => {
     expect(detectLang(['ru-RU'], 'he')).toBe('he');
     expect(detectLang(['ru-RU'], 'klingon')).toBe('ru');
     expect(detectLang(['en-US'], 42)).toBe('en');
@@ -107,19 +108,19 @@ describe('detectLang', () => {
 });
 
 describe('direction', () => {
-  it('иврит справа налево, остальные слева направо', () => {
+  it('Hebrew runs right to left, the rest left to right', () => {
     expect(direction('he')).toBe('rtl');
     for (const lang of ['en', 'ru', 'uk'] as const) expect(direction(lang), lang).toBe('ltr');
   });
 });
 
 describe('format', () => {
-  it('подставляет параметры', () => {
+  it('substitutes parameters', () => {
     expect(format('{k}k triangles · {ms} ms', { k: '18.6', ms: 10 }, 'en')).toBe('18.6k triangles · 10 ms');
   });
 });
 
-describe('сторож: видимый текст только через словари', () => {
+describe('guard: visible text only through the dictionaries', () => {
   function files(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
       const path = join(dir, name);
@@ -128,9 +129,9 @@ describe('сторож: видимый текст только через сло
   }
   const sources = files('src').filter((path) => /\.(ts|css)$/.test(path) && !path.startsWith(join('src', 'i18n')));
 
-  it('в строковых литералах вне src/i18n нет кириллицы и иврита', () => {
+  it('no Cyrillic or Hebrew in string literals outside src/i18n', () => {
     for (const path of sources) {
-      // комментарии — по-русски, и это не текст интерфейса
+      // comments are not interface text (an example of a Cyrillic file name may be in one)
       const code = readFileSync(path, 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/(^|[^:])\/\/.*$/gm, '$1');
@@ -140,7 +141,7 @@ describe('сторож: видимый текст только через сло
     }
   });
 
-  it('в index.html текст — английский запасной (его видно до скрипта)', () => {
+  it('index.html holds the English fallback text (seen before the script runs)', () => {
     const html = readFileSync('index.html', 'utf8');
     expect(html).not.toMatch(FOREIGN);
   });

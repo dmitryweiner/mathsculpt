@@ -1,6 +1,6 @@
-// 3D simplex-шум (Стефан Густавсон) с детерминированной перестановкой от
-// сида + fBm. Шов u=0/2π бесшовен, потому что displace семплирует шум на
-// цилиндре в 3D (см. displace.ts), а не в (u,v)-плоскости.
+// 3D simplex noise (Stefan Gustavson) with a deterministic permutation from a
+// seed + fBm. The u=0/2π seam is seamless because displace samples the noise
+// on a cylinder in 3D (see displace.ts), not in the (u,v) plane.
 
 import { mulberry32 } from './rng';
 
@@ -24,7 +24,7 @@ const G3 = 1 / 6;
 
 export type Noise3 = (x: number, y: number, z: number) => number;
 
-/** Simplex-шум 3D, выход ≈ [−1, 1]. */
+/** 3D simplex noise, output ≈ [−1, 1]. */
 export function simplex3(seed: number): Noise3 {
   const perm = new Uint8Array(512);
   const p = new Uint8Array(256);
@@ -128,7 +128,7 @@ export function simplex3(seed: number): Noise3 {
   };
 }
 
-/** fBm: Σ noise(2ᵏ·x)/2ᵏ, нормировано к ≈[−1,1]. */
+/** fBm: Σ noise(2ᵏ·x)/2ᵏ, normalised to ≈[−1,1]. */
 export function fbm3(noise: Noise3, octaves: number): Noise3 {
   const n = Math.max(1, Math.min(8, Math.round(octaves)));
   let norm = 0;

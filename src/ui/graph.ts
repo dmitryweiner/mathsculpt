@@ -1,4 +1,4 @@
-// График профиля r(z): силуэт тела вращения на Canvas 2D (z вверх).
+// The profile graph r(z): a solid of revolution's silhouette on a 2D canvas (z up).
 
 export function drawProfileGraph(canvas: HTMLCanvasElement, radiusFn: (t: number) => number, height: number): void {
   const ctx = canvas.getContext('2d');
@@ -22,7 +22,7 @@ export function drawProfileGraph(canvas: HTMLCanvasElement, radiusFn: (t: number
     rMax = Math.max(rMax, r);
   }
   const pad = 6;
-  // масштаб: вписать и по ширине (2·rMax), и по высоте (height)
+  // the scale: fit both the width (2·rMax) and the height
   const scale = Math.min((w - 2 * pad) / (2 * rMax), (h - 2 * pad) / height);
   const cx = w / 2;
   const y0 = h - pad;
@@ -45,7 +45,7 @@ export function drawProfileGraph(canvas: HTMLCanvasElement, radiusFn: (t: number
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // ось
+  // the axis
   ctx.strokeStyle = 'rgba(139, 152, 165, 0.4)';
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);

@@ -1,4 +1,4 @@
-// Деформеры: twist, taper, симметрия. Плюс сохранение watertight в конвейере.
+// Deformers: twist, taper, symmetry. Plus watertightness kept in the pipeline.
 import { applyDeformer, DEFORM_IDS, DEFAULT_DEFORM_PARAMS } from '../src/geo/deform';
 import { sampleGrid } from '../src/geo/surface';
 import { buildMesh, defaultParams } from '../src/geo/build';
@@ -12,19 +12,19 @@ const unitCylinder = () =>
   });
 
 describe('twist', () => {
-  it('поворачивает верхнее кольцо на 2π·turns, z не трогает', () => {
+  it('turns the top ring by 2π·turns, leaves z alone', () => {
     const g = unitCylinder();
     applyDeformer('twist', g, { turns: 0.25 });
-    // вершина (i=0, j=nv): угол был 0, стал π/2
+    // vertex (i=0, j=nv): its angle was 0, now π/2
     const k = 8 * 16 * 3;
     expect(g.positions[k]).toBeCloseTo(0, 5);
     expect(g.positions[k + 1]).toBeCloseTo(1, 5);
     expect(g.positions[k + 2]).toBeCloseTo(1, 5);
-    // нижнее кольцо не повёрнуто
+    // the bottom ring is not turned
     expect(g.positions[0]).toBeCloseTo(1, 5);
   });
 
-  it('turns=0 — без изменений', () => {
+  it('turns=0 changes nothing', () => {
     const g = unitCylinder();
     const before = Array.from(g.positions);
     applyDeformer('twist', g, { turns: 0 });
@@ -33,7 +33,7 @@ describe('twist', () => {
 });
 
 describe('taper', () => {
-  it('сжимает верх на 1−amount, низ не трогает', () => {
+  it('shrinks the top by 1−amount, leaves the bottom alone', () => {
     const g = unitCylinder();
     applyDeformer('taper', g, { amount: 0.4, power: 1 });
     const top = 8 * 16 * 3;
@@ -41,7 +41,7 @@ describe('taper', () => {
     expect(Math.hypot(g.positions[0], g.positions[1])).toBeCloseTo(1, 5);
   });
 
-  it('amount<0 расширяет', () => {
+  it('amount<0 widens', () => {
     const g = unitCylinder();
     applyDeformer('taper', g, { amount: -0.5, power: 1 });
     const top = 8 * 16 * 3;
@@ -50,7 +50,7 @@ describe('taper', () => {
 });
 
 describe('symmetry', () => {
-  // бугор на одной стороне: r = 1 + 0.3·exp по u около 0
+  // a bump on one side: r = 1 + 0.3·exp over u around 0
   const bumped = () =>
     sampleGrid(24, 4, (u, v, out) => {
       const r = 1 + 0.3 * Math.exp(-8 * Math.min(u, 2 * Math.PI - u) ** 2);
@@ -59,26 +59,26 @@ describe('symmetry', () => {
       out[2] = v;
     });
 
-  it('mix=0 — без изменений', () => {
+  it('mix=0 changes nothing', () => {
     const g = bumped();
     const before = Array.from(g.positions);
     applyDeformer('symmetry', g, { k: 6, mix: 0 });
     expect(Array.from(g.positions)).toEqual(before);
   });
 
-  it('k=1 — без изменений', () => {
+  it('k=1 changes nothing', () => {
     const g = bumped();
     const before = Array.from(g.positions);
     applyDeformer('symmetry', g, { k: 1, mix: 1 });
     expect(Array.from(g.positions)).toEqual(before);
   });
 
-  it('после k=3 (nu кратно k) поверхность 3-кратно симметрична', () => {
+  it('after k=3 (nu a multiple of k) the surface is 3-fold symmetric', () => {
     const g = bumped();
     applyDeformer('symmetry', g, { k: 3, mix: 1 });
     const nu = g.nu;
     const shift = nu / 3;
-    // радиус вершины i и i+nu/3 в одном кольце совпадает
+    // the radii of vertices i and i+nu/3 in one ring match
     for (let i = 0; i < nu; i++) {
       const a = (2 * nu + i) * 3;
       const b = (2 * nu + ((i + shift) % nu)) * 3;
@@ -88,8 +88,8 @@ describe('symmetry', () => {
     }
   });
 
-  it('осесимметричный цилиндр почти неподвижен при любом k', () => {
-    // дробные колонки интерполируются хордой: радиус проседает ≤ (π/nu)²/2
+  it('an axisymmetric cylinder hardly moves at any k', () => {
+    // fractional columns are interpolated along a chord: the radius sags by ≤ (π/nu)²/2
     const g = sampleGrid(64, 4, (u, v, out) => {
       out[0] = Math.cos(u);
       out[1] = Math.sin(u);
@@ -105,8 +105,8 @@ describe('symmetry', () => {
   });
 });
 
-describe('деформеры в конвейере', () => {
-  it.each([...DEFORM_IDS])('%s: меш остаётся watertight и конечным', (id) => {
+describe('deformers in the pipeline', () => {
+  it.each([...DEFORM_IDS])('%s: the mesh stays watertight and finite', (id) => {
     const p = defaultParams();
     p.nu = 48;
     p.nv = 48;
@@ -115,11 +115,11 @@ describe('деформеры в конвейере', () => {
     expect(report.finite).toBe(true);
     expect(report.watertight).toBe(true);
     expect(report.volume).toBeGreaterThan(0);
-    // quantize по построению схлопывает часть треугольников в плоские
+    // quantize collapses some triangles flat by its nature
     if (id !== 'quantize') expect(report.degenerateTriangles).toBe(0);
   });
 
-  it('все деформеры разом + все смещения — валидный меш', () => {
+  it('every deformer at once + every displacement — a valid mesh', () => {
     const p = defaultParams();
     p.nu = 48;
     p.nv = 48;

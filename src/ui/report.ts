@@ -1,9 +1,10 @@
-// Что сказать о меше: вердикты кодами сообщений (переводятся при показе) и
-// строка статуса. Без DOM — проверяется в node.
+// What to say about a mesh: verdicts as message codes (translated when
+// shown) and the status line. No DOM — tested in node.
 //
-// Блокировки и предупреждения сита — китовые (`3d/validate`, `kit.mesh.*`):
-// одно сито у всех приложений. Свои — то, что знает только MathSculpt:
-// свесы круче 60° и амплитуда смещений больше радиуса профиля.
+// The gate's blockers and warnings are the kit's (`3d/validate`,
+// `kit.mesh.*`): one gate for every app. The app's own are what only
+// MathSculpt knows: overhangs steeper than 60° and a displacement amplitude
+// larger than the profile's radius.
 
 import type { MeshReport } from 'maker-kit/3d/validate';
 import { assessExport } from 'maker-kit/3d/validate';
@@ -13,7 +14,7 @@ import type { BuildParams } from '../geo/build';
 import { radiusFnFor } from '../geo/build';
 import type { Key } from '../i18n';
 
-/** Доля нависающей поверхности, с которой стоит предупредить. */
+/** The share of overhanging surface worth a warning. */
 const OVERHANG_WARN = 0.02;
 
 export interface Verdict {
@@ -21,12 +22,12 @@ export interface Verdict {
   message: Message<KitKey | Key>;
 }
 
-/** Модель — сплошное тело для печати: закрытая, или полый сосуд со стенкой (не оболочка нулевой толщины). */
+/** The model is a solid to print: closed, or a hollow vessel with a wall (not a zero-thickness shell). */
 export function shouldBeClosed(params: BuildParams): boolean {
   return params.caps === 'both' || (params.caps === 'bottom' && params.wall > 0);
 }
 
-/** Сумма амплитуд включённых смещений больше наименьшего радиуса профиля — поверхность может пройти сквозь себя. */
+/** The enabled displacements' amplitudes add up to more than the profile's smallest radius — the surface may cut through itself. */
 function amplitudeExceedsRadius(params: BuildParams): boolean {
   const profile = radiusFnFor(params);
   if (!profile) return false;
@@ -37,7 +38,7 @@ function amplitudeExceedsRadius(params: BuildParams): boolean {
   return budget > minR;
 }
 
-/** Блокировки, затем предупреждения. */
+/** The blockers, then the warnings. */
 export function meshVerdicts(report: MeshReport, params: BuildParams, overhang: number): Verdict[] {
   const gate = assessExport(report, shouldBeClosed(params));
   const warnings: Verdict[] = gate.warnings.map((message) => ({ severity: 'warn', message }));
@@ -47,7 +48,7 @@ export function meshVerdicts(report: MeshReport, params: BuildParams, overhang: 
   return [...gate.blockers.map((message): Verdict => ({ severity: 'bad', message })), ...warnings];
 }
 
-/** «18.6k triangles · watertight ✓ · full 256×256 · 83 ms»; `resolution` null — превью. */
+/** "18.6k triangles · watertight ✓ · full 256×256 · 83 ms"; `resolution` null is the preview. */
 export function statusText(
   report: MeshReport,
   params: BuildParams,

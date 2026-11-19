@@ -1,10 +1,10 @@
-// Схема сериализуемого состояния v1 (URL-хэш, localStorage, пресеты).
-// Разбор терпимый: неизвестные/битые поля молча отбрасываются и накрываются
-// дефолтами. Без as-кастов — только type guards.
+// The schema of the serializable state v1 (storage, project files, presets).
+// Parsing is tolerant: unknown or broken fields are dropped quietly and
+// covered by the defaults. No `as` casts — type guards only.
 //
-// Имени пресета в состоянии нет: какой пресет открыт, приложение держит
-// рядом (`PresetRef` кита), а `presetName` старых ссылок и пресетов
-// отбрасывается при разборе.
+// The state has no preset name: which preset is open, the app keeps beside
+// the state (the kit's `PresetRef`); the `presetName` of old links and
+// presets is dropped when parsed.
 
 import type { CapMode } from '../geo/surface';
 import type { Params } from '../geo/displace';
@@ -29,7 +29,7 @@ export interface AppState {
   profile: string;
   caps: CapMode;
   heightMm: number;
-  /** толщина стенки в мм для режима open top (0 = оболочка нулевой толщины) */
+  /** the wall thickness in mm for open top (0 = a zero-thickness shell) */
   wallMm: number;
   displace: Record<string, CardSnapshot>;
   deform: Record<string, CardSnapshot>;
@@ -111,9 +111,9 @@ function sanitizeRoute(u: unknown, lfoCount: number): ModRoute | null {
   return { src, card, param, depth: Math.max(-1, Math.min(1, depth)) };
 }
 
-// Маршруты ссылаются на LFO по индексу (src): битый LFO заменяется дефолтным
-// (не выкидывается — иначе сдвинулись бы индексы), негодные маршруты
-// отбрасываются поштучно. Пул добивается/обрезается до LFO_COUNT.
+// Routes refer to an LFO by its index (src): a broken LFO is replaced by the
+// default one (not dropped — the indices would shift), bad routes are
+// dropped one by one. The pool is padded or cut to LFO_COUNT.
 function sanitizeMod(u: unknown): ModState | undefined {
   if (!isRecord(u)) return undefined;
   if (!Array.isArray(u.lfos) || !Array.isArray(u.routes)) return undefined;
@@ -129,7 +129,7 @@ function sanitizeMod(u: unknown): ModState | undefined {
   return { lfos, routes };
 }
 
-/** Терпимый разбор состояния из JSON (URL, localStorage, пресеты). */
+/** A tolerant parse of a state from JSON (storage, files, presets). */
 export function sanitizeState(u: unknown): PartialAppState | null {
   if (!isRecord(u)) return null;
   const out: PartialAppState = {};
@@ -183,7 +183,7 @@ function applyCards(target: Record<string, CardState>, defs: readonly CardDef[],
   }
 }
 
-/** Частичное состояние поверх дефолтов → параметры сборки (без nu/nv из state). */
+/** A partial state over the defaults → the build parameters (nu/nv not from the state). */
 export function stateToParams(partial: PartialAppState): BuildParams {
   const p = defaultParams();
   if (partial.profile) p.profile = partial.profile;
@@ -228,7 +228,7 @@ export function stateToParams(partial: PartialAppState): BuildParams {
   return p;
 }
 
-/** Полное состояние из параметров сборки (для share/сохранения). */
+/** The whole state from the build parameters (for saving). */
 export function paramsToState(p: BuildParams, heightMm: number, wallMm: number): AppState {
   const cards = (src: Record<string, CardState>): Record<string, CardSnapshot> => {
     const out: Record<string, CardSnapshot> = {};
@@ -262,11 +262,11 @@ export function paramsToState(p: BuildParams, heightMm: number, wallMm: number):
 }
 
 /**
- * Параметры сборки из состояния (сетку nu×nv задаёт тот, кто строит).
- * Ядро считает в относительных единицах, поэтому стенка из миллиметров
- * переводится здесь: 1 ед. модели = heightMm/modelHeight мм, значит
- * wall = wallMm · modelHeight / heightMm. Стенка — только у тела вращения
- * с открытым верхом; иначе 0 (сплошная модель или оболочка).
+ * The build parameters of a state (the builder sets the nu×nv grid). The
+ * core works in relative units, so the wall is converted from millimetres
+ * here: 1 model unit = heightMm/modelHeight mm, hence
+ * wall = wallMm · modelHeight / heightMm. Only a solid of revolution with an
+ * open top has a wall; otherwise 0 (a solid model or a shell).
  */
 export function buildParamsOf(state: AppState): BuildParams {
   const params = stateToParams(state);
@@ -277,17 +277,17 @@ export function buildParamsOf(state: AppState): BuildParams {
   return params;
 }
 
-/** Полное состояние из частичного: дефолты под тем, что задано. */
+/** A whole state from a partial one: the defaults under what is given. */
 export function completeState(partial: PartialAppState): AppState {
   return paramsToState(stateToParams(partial), partial.heightMm ?? DEFAULT_HEIGHT_MM, partial.wallMm ?? DEFAULT_WALL_MM);
 }
 
-/** Модель по умолчанию. */
+/** The default model. */
 export function defaultState(): AppState {
   return completeState({});
 }
 
-/** Полное чистое состояние из чего угодно (хранилище, файл): мусор — модель по умолчанию. */
+/** A whole clean state from anything (storage, a file): garbage gives the default model. */
 export function cleanState(u: unknown): AppState {
   return completeState(sanitizeState(u) ?? {});
 }

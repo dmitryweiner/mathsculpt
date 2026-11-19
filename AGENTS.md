@@ -7,9 +7,9 @@ this file and `CLAUDE.md` win where they say otherwise.
 
 ## Language
 
-README, `docs/`, `CLAUDE.md` and this file are in English. Code comments and
-`plans/` are in Russian, as the code and the plans have been written from
-the start: a new comment follows the language of the file around it.
+Code comments, test titles, README, `docs/`, `CLAUDE.md` and this file are
+in English, as the conventions say (the comments were translated from
+Russian on 2026-11-19). `plans/` stay in Russian, as they were written.
 Conversations with the user are in Russian.
 
 ## Commits and pull requests

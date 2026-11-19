@@ -1,6 +1,7 @@
-// Конвейер геометрии (см. PLAN.md): профиль → сетка → смещения по нормали →
-// деформеры → крышки → нормали. Чистая функция параметров — используется
-// главным потоком сейчас и Web Worker'ом в фазе 3.
+// The geometry pipeline (plans/PLAN.md): profile → grid → displacements along
+// the normals → deformers → caps → normals. A pure function of the
+// parameters — used by the main thread (the preview) and the Web Worker (the
+// full build).
 
 import type { SurfaceMesh } from 'maker-kit/3d/mesh';
 import { meshNormals } from 'maker-kit/3d/mesh';
@@ -37,16 +38,17 @@ export interface BuildParams {
   caps: CapMode;
   displace: Record<DisplaceId, CardState>;
   deform: Record<DeformId, CardState>;
-  /** параметры Фурье-профиля (используются при profile === 'fourier') */
+  /** the Fourier profile's parameters (used when profile === 'fourier') */
   fourier: Params;
-  /** настройка формы пресет-профиля: base/belly/neck (см. profileShapeFactor) */
+  /** the profile's shape adjustment: base/belly/neck (see profileShapeFactor) */
   profileShape: Params;
-  /** параметры фигур-носителей (используются при profile ∈ SHAPE_IDS) */
+  /** the carrier shapes' parameters (used when profile ∈ SHAPE_IDS) */
   shapes: Record<ShapeId, Params>;
   /**
-   * Толщина стенки в единицах модели (относительных). > 0 при caps='bottom'
-   * для тел вращения → настоящий полый сосуд с плоским дном и watertight-солид.
-   * 0 → оболочка нулевой толщины (vase-mode). UI хранит мм, конвертация — там.
+   * The wall thickness in (relative) model units. > 0 with caps='bottom' on
+   * a solid of revolution → a real hollow vessel with a flat floor, a
+   * watertight solid. 0 → a zero-thickness shell (vase mode). The state
+   * keeps mm; buildParamsOf converts.
    */
   wall: number;
   mod: ModState;
@@ -58,7 +60,7 @@ function card(params: Params, on = false): CardState {
   return { on, params: { ...params } };
 }
 
-/** Свежая копия дефолтов (Record требует все id — tsc ловит новые карточки). */
+/** A fresh copy of the defaults (the Record needs every id — tsc catches a new card). */
 export function defaultParams(): BuildParams {
   return {
     profile: 'vase',
@@ -112,13 +114,14 @@ export function defaultParams(): BuildParams {
   };
 }
 
-/** Тело вращения (не абстрактная фигура и не тор) — у него есть профиль r(z). */
+/** A solid of revolution (not an abstract shape or the torus) — it has a profile r(z). */
 export function isRevolveProfile(profile: string): boolean {
   return !isShapeId(profile) && profile !== 'torus';
 }
 
-// Плоское дно: смещения гаснут к v=0 на нижней кромке (первые ~6% высоты).
-// Даёт ровное основание для адгезии и чистое дно у полого сосуда.
+// A flat base: the displacements fade out towards v=0 at the bottom edge (the
+// first ~6% of the height). An even base for bed adhesion and a clean floor
+// in a hollow vessel.
 const BOTTOM_FADE = 0.06;
 function bottomFade(v: number): number {
   if (v >= BOTTOM_FADE) return 1;
@@ -129,8 +132,9 @@ function bottomFade(v: number): number {
 export const DEFAULT_PARAMS: BuildParams = defaultParams();
 
 /**
- * Профиль и высота для текущих параметров; null для фигур-носителей без
- * профиля r(z) (сфера, тор и т.п.) — график силуэта тогда не рисуется.
+ * The profile and the height for the parameters; null for carrier shapes
+ * with no profile r(z) (the sphere, the torus and the like) — the silhouette
+ * graph is not drawn then.
  */
 export function radiusFnFor(p: BuildParams): { radiusFn: (t: number) => number; height: number } | null {
   if (isShapeId(p.profile)) return null;
@@ -141,7 +145,7 @@ export function radiusFnFor(p: BuildParams): { radiusFn: (t: number) => number; 
   return { radiusFn: (t) => shapedProfileRadius(def, p.profileShape, t), height: def.height };
 }
 
-/** Сетка-носитель + высота + способ сборки меша для текущих параметров. */
+/** The carrier grid + the height + how to assemble the mesh, for the parameters. */
 function baseGrid(p: BuildParams): { grid: Grid; height: number; torus: boolean } {
   if (isShapeId(p.profile)) {
     const res = shapeGrid(p.profile, p.shapes[p.profile], p.nu, p.nv);
@@ -157,8 +161,8 @@ function baseGrid(p: BuildParams): { grid: Grid; height: number; torus: boolean 
 }
 
 /**
- * Эффективные параметры карточки в точке — если на неё есть маршруты
- * модуляции; иначе undefined (быстрый статический путь).
+ * A card's effective parameters at a point — when modulation routes lead to
+ * it; otherwise undefined (the fast static path).
  */
 function makeParamEval(cardId: string, base: Params, mod: ModState, ctx: ModContext): ParamEval | undefined {
   const resolved = mod.routes
@@ -177,10 +181,11 @@ function makeParamEval(cardId: string, base: Params, mod: ModState, ctx: ModCont
 }
 
 /**
- * Полый сосуд вращения: внутренняя оболочка смещена радиально к оси. В отличие
- * от общего normal offset это сохраняет заданную горизонтальную толщину на
- * крутых плечах/горлышке и не уводит внутренние вершины по высоте. Дно полости
- * поднято на `wall`; толщина клампится, чтобы не пересечь ось.
+ * A hollow vessel of revolution: the inner shell is moved radially towards
+ * the axis. Unlike a general normal offset this keeps the set horizontal
+ * thickness on steep shoulders and necks and does not move the inner
+ * vertices in height. The cavity's floor is raised by `wall`; the thickness
+ * is clamped so as not to cross the axis.
  */
 function buildHollow(grid: Grid, wallRel: number): Omit<SurfaceMesh, 'normals'> {
   const { positions } = grid;
@@ -200,7 +205,7 @@ function buildHollow(grid: Grid, wallRel: number): Omit<SurfaceMesh, 'normals'> 
     const scale = radius > 1e-12 ? Math.max(0.2, (radius - wall) / radius) : 0.2;
     inner[i] = x * scale;
     inner[i + 1] = y * scale;
-    inner[i + 2] = Math.max(positions[i + 2], zFloor); // плоский пол полости
+    inner[i + 2] = Math.max(positions[i + 2], zFloor); // the cavity's flat floor
   }
   return assembleHollowMesh(grid, inner);
 }
@@ -222,8 +227,9 @@ export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh 
       stack.push({ fn: makeDisplace(id, card.params), weight: 1 });
     }
   }
-  // Тело вращения печатается «дном вниз»: гасим смещения у v=0 для плоского
-  // основания. У сферы/тора/суперфигур низа-как-основания нет — не трогаем.
+  // A solid of revolution prints standing on its base: the displacements fade
+  // at v=0 for a flat base. A sphere, torus or superfigure has no base as its
+  // bottom — left as they are.
   const revolve = isRevolveProfile(p.profile);
   if (stack.length > 0) {
     const normals = gridNormals(grid);
@@ -244,7 +250,7 @@ export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh 
     if (card?.on) applyDeformer(id, grid, card.params, makeParamEval(id, card.params, p.mod, ctx));
   }
   onProgress?.(0.75, 'assembling');
-  // полярные фигуры всегда закрыты крышками (полюсные дырки), тор — без крышек
+  // polar shapes are always capped (the holes at the poles), the torus has no caps
   const caps: CapMode = isShapeId(p.profile) ? 'both' : p.caps;
   const hollow = revolve && p.caps === 'bottom' && p.wall > 0;
   const { positions, indices } = hollow ? buildHollow(grid, p.wall) : torus ? assembleTorusMesh(grid) : assembleMesh(grid, caps);

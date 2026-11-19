@@ -1,7 +1,7 @@
-// Строки панели — данные для контролов кита (`maker-kit/ui/controls`):
-// откуда каждая берёт значение в состоянии и какое новое состояние даёт.
-// Состояние неизменяемо: правка возвращает новое, старое остаётся в истории.
-// Без DOM — проверяется в node; рисует их `ui/panel`.
+// The panel's rows — data for the kit's controls (`maker-kit/ui/controls`):
+// where each reads its value in the state and what new state it gives. The
+// state is immutable: an edit returns a new one, the old one stays in the
+// history. No DOM — tested in node; `ui/panel` draws them.
 
 import type { Control, Option } from 'maker-kit/ui/controls';
 import { labelText } from 'maker-kit/core/message';
@@ -21,7 +21,7 @@ import { hasKey } from '../i18n';
 
 export type Row = Control<AppState, Key>;
 
-/** Где лежат параметры карточки в состоянии. */
+/** Where a card's parameters live in the state. */
 interface Slot {
   read(state: AppState): Params;
   write(state: AppState, params: Params): AppState;
@@ -65,7 +65,7 @@ function rowsOf(def: CardDef, slot: Slot): Row[] {
   return rows;
 }
 
-/** Карточка смещения или деформера: галочка включения первой строкой, затем её параметры. */
+/** A displacement or deformer card: the switch as the first row, then its parameters. */
 export function effectRows(def: CardDef): Row[] {
   const group: EffectGroup = isDeformId(def.id) ? 'deform' : 'displace';
   return [
@@ -80,7 +80,7 @@ export function effectRows(def: CardDef): Row[] {
   ];
 }
 
-/** Карточка носителя — настройка профиля, Фурье-профиль, фигура: всегда включена, только параметры. */
+/** A carrier card — the profile shape, the Fourier profile, a shape: always on, parameters only. */
 export function carrierRows(def: CardDef): Row[] {
   if (def.id === 'profileShape') {
     return rowsOf(def, { read: (state) => state.profileShape, write: (state, profileShape) => ({ ...state, profileShape }) });
@@ -99,7 +99,7 @@ const PROFILE_OPTIONS: readonly Option<Key>[] = [...PROFILE_IDS, FOURIER_PROFILE
   return hasKey(key) ? { value: id, label: key } : { value: id, text: id };
 });
 
-/** Карточка «Shape»: носитель, режим, стенка полого сосуда, высота. */
+/** The Shape card: the carrier, the mode, a hollow vessel's wall, the height. */
 export const SHAPE_ROWS: readonly Row[] = [
   {
     kind: 'select',
@@ -166,7 +166,7 @@ function withLfo(state: AppState, index: number, change: (lfo: SpatialLfoDef) =>
   return { ...state, mod: { ...state.mod, lfos: state.mod.lfos.map((lfo, i) => (i === index ? change(lfo) : lfo)) } };
 }
 
-/** Строки LFO номер `index` пула. */
+/** The rows of the pool's LFO number `index`. */
 export function lfoRows(index: number): Row[] {
   const lfo = (state: AppState): SpatialLfoDef | undefined => state.mod.lfos[index];
   const range = (key: 'rate' | 'phase' | 'k', label: Key, min: number, max: number, step: number): Row => ({
@@ -206,14 +206,14 @@ function withRoute(state: AppState, index: number, change: (route: ModRoute) => 
   return { ...state, mod: { ...state.mod, routes: state.mod.routes.map((route, i) => (i === index ? change(route) : route)) } };
 }
 
-/** Цель модуляции словами: «Ripples · Amplitude». */
+/** A modulation target in words: "Ripples · Amplitude". */
 export function targetText(card: string, param: string, t: Translate<Key>): string {
   const def = findParameterCard(card);
   const slider = def?.sliders.find((s) => s.k === param);
   return `${def ? t(def.title) : card} · ${slider ? labelText(slider.label, t) : param}`;
 }
 
-/** Строки маршрута номер `index`: источник, цель, глубина. Подписи целей собраны из словаря — `t`. */
+/** The rows of route number `index`: the source, the target, the depth. The targets' labels come from the dictionary — `t`. */
 export function routeRows(index: number, t: Translate<Key>): Row[] {
   const route = (state: AppState): ModRoute | undefined => state.mod.routes[index];
   return [

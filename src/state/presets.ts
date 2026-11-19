@@ -1,14 +1,14 @@
-// Встроенные пресеты: частичные состояния поверх дефолтов (см. state/schema).
-// Каждый пресет проверяется тестом: sanitize-стабильность и watertight-меш.
+// The built-in presets: partial states over the defaults (see state/schema).
+// A test checks every preset: stable under sanitize, a watertight mesh.
 //
-// Пресет узнаётся по id (`core/presets` кита): имя — в словарях
-// (`preset.<id>.name`), на каждом языке своё. Высоту и стенку пресеты не
-// задают — открытый пресет берёт дефолтные.
+// A preset is known by its id (the kit's `core/presets`): its name is in the
+// dictionaries (`preset.<id>.name`), one per language. Presets set no height
+// or wall — an opened preset takes the defaults.
 import type { BuiltInPreset } from 'maker-kit/core/presets';
 import type { AppState, PartialAppState } from './schema';
 import { completeState, defaultState } from './schema';
 
-/** Что каждый пресет меняет относительно модели по умолчанию, в порядке списка. */
+/** What each preset changes in the default model, in the list's order. */
 export const PRESET_STATES: Readonly<Record<string, PartialAppState>> = {
   'classic-vase': {
     profile: 'vase',
@@ -143,7 +143,7 @@ export const PRESET_STATES: Readonly<Record<string, PartialAppState>> = {
   },
 };
 
-/** 📄 Новое открывает этот пресет: модель по умолчанию, в списке пресетов её нет (правило кита). */
+/** 📄 New opens this preset: the default model, not in the presets list (the kit's rule). */
 export const BLANK_ID = 'blank';
 
 export const PRESETS: readonly BuiltInPreset<AppState>[] = [

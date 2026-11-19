@@ -1,22 +1,23 @@
-// Обвязка браузерных скриптов — китовая (`maker-kit/harness`): разбор
-// флагов, свой vite на своих портах со --strictPort (перед `--preview` сам
-// пересобирает, занятый порт превью — ошибка), страницы со сбором ошибок
-// консоли, шаги и прогон. Здесь — только порты MathSculpt. Правило
-// репозитория — не плодить одноразовые скрипты, а расширять эти (CLAUDE.md).
+// The browser scripts' harness is the kit's (`maker-kit/harness`): flags,
+// vite on the project's own ports with --strictPort (it rebuilds before
+// `--preview`; a busy preview port is an error), pages collecting console
+// errors, steps and the run. Only MathSculpt's ports are here. The rule of
+// the repository: no throwaway scripts — extend these (CLAUDE.md).
 //
-// Браузер — Playwright по умолчанию либо из `PLAYWRIGHT_BROWSER` (путь к
-// исполняемому chromium): в облачном контейнере Playwright ищет не ту
-// сборку, что предустановлена.
+// The browser is Playwright's own, or `PLAYWRIGHT_BROWSER` (a chromium's
+// path): in a cloud container Playwright looks for another build than the
+// installed one.
 
 import { launch as kitLaunch } from 'maker-kit/harness';
 
 export { binaryStl, check, download, horizontalOverflow, offline, parseArgs, settled, VIEWPORTS } from 'maker-kit/harness';
 
 /**
- * Порты MathSculpt — свои, со --strictPort: сервер другого проекта на
- * 5173/4173 по ошибке не проверится (занятые — в docs/harness.md кита).
+ * MathSculpt's own ports, with --strictPort: another project's server on
+ * 5173/4173 is never tested by mistake (the taken ones: the kit's
+ * docs/harness.md).
  */
 export const PORTS = { dev: 5287, preview: 4287 };
 
-/** `launch` кита на портах MathSculpt. */
+/** The kit's `launch` on MathSculpt's ports. */
 export const launch = ({ preview = false } = {}) => kitLaunch({ preview, ports: PORTS });
