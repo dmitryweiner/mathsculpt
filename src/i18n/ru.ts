@@ -64,6 +64,7 @@ export const ru: Record<Key, string> = {
   'presets.auto': 'Пресет',
   'presets.prompt': 'Имя пресета:',
   'presets.title': 'Пресеты',
+  'file.prompt': 'Имя проекта:',
 
   // --- the Shape card ---
   'shape.profile': 'Профиль',
