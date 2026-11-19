@@ -7,7 +7,11 @@ import { chromium } from 'playwright';
 const BASE = 'http://localhost:5287';
 
 async function serverUp() {
-  try { return (await fetch(BASE)).ok; } catch { return false; }
+  try {
+    return (await fetch(BASE)).ok;
+  } catch {
+    return false;
+  }
 }
 
 let devProc = null;

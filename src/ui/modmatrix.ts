@@ -56,13 +56,7 @@ export function buildModPanel(mod: ModState, onChange: () => void): ModPanelHand
     box.appendChild(selRow);
 
     const sliders: { input: HTMLInputElement; out: HTMLOutputElement; key: 'rate' | 'phase' | 'k' }[] = [];
-    const sliderRow = (
-      name: string,
-      key: 'rate' | 'phase' | 'k',
-      min: number,
-      max: number,
-      step: number,
-    ): void => {
+    const sliderRow = (name: string, key: 'rate' | 'phase' | 'k', min: number, max: number, step: number): void => {
       const row = make('div', 'row');
       row.appendChild(make('span', '', name));
       const input = make('input');

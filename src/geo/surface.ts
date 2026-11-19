@@ -137,8 +137,12 @@ export function assembleHollowMesh(outer: Grid, inner: Float32Array): Omit<Surfa
       const b = oBase + j * nu + i1;
       const c = oBase + (j + 1) * nu + i1;
       const d = oBase + (j + 1) * nu + i;
-      indices[k++] = a; indices[k++] = b; indices[k++] = c;
-      indices[k++] = a; indices[k++] = c; indices[k++] = d;
+      indices[k++] = a;
+      indices[k++] = b;
+      indices[k++] = c;
+      indices[k++] = a;
+      indices[k++] = c;
+      indices[k++] = d;
     }
   }
   // внутренние стенки (нормаль внутрь = обратный обход)
@@ -149,13 +153,19 @@ export function assembleHollowMesh(outer: Grid, inner: Float32Array): Omit<Surfa
       const b = iBase + (j + 1) * nu + i;
       const c = iBase + (j + 1) * nu + i1;
       const d = iBase + j * nu + i1;
-      indices[k++] = a; indices[k++] = b; indices[k++] = c;
-      indices[k++] = a; indices[k++] = c; indices[k++] = d;
+      indices[k++] = a;
+      indices[k++] = b;
+      indices[k++] = c;
+      indices[k++] = a;
+      indices[k++] = c;
+      indices[k++] = d;
     }
   }
 
   const centroid = (base: number, dst: number): void => {
-    let x = 0, y = 0, z = 0;
+    let x = 0,
+      y = 0,
+      z = 0;
     for (let i = 0; i < nu; i++) {
       const p = (base + i) * 3;
       x += outPos[p];
@@ -171,19 +181,27 @@ export function assembleHollowMesh(outer: Grid, inner: Float32Array): Omit<Surfa
 
   // внешнее дно (нормаль вниз)
   for (let i = 0; i < nu; i++) {
-    indices[k++] = oCap; indices[k++] = oBase + ((i + 1) % nu); indices[k++] = oBase + i;
+    indices[k++] = oCap;
+    indices[k++] = oBase + ((i + 1) % nu);
+    indices[k++] = oBase + i;
   }
   // дно полости (нормаль вверх)
   for (let i = 0; i < nu; i++) {
-    indices[k++] = iCap; indices[k++] = iBase + i; indices[k++] = iBase + ((i + 1) % nu);
+    indices[k++] = iCap;
+    indices[k++] = iBase + i;
+    indices[k++] = iBase + ((i + 1) % nu);
   }
   // верхний ободок: кольцо между внешним и внутренним верхними рядами (нормаль вверх)
   const oTop = oBase + nv * nu;
   const iTop = iBase + nv * nu;
   for (let i = 0; i < nu; i++) {
     const i1 = (i + 1) % nu;
-    indices[k++] = oTop + i; indices[k++] = oTop + i1; indices[k++] = iTop + i1;
-    indices[k++] = oTop + i; indices[k++] = iTop + i1; indices[k++] = iTop + i;
+    indices[k++] = oTop + i;
+    indices[k++] = oTop + i1;
+    indices[k++] = iTop + i1;
+    indices[k++] = oTop + i;
+    indices[k++] = iTop + i1;
+    indices[k++] = iTop + i;
   }
   return { positions: outPos, indices };
 }
@@ -209,7 +227,9 @@ export function assembleMesh(grid: Grid, caps: CapMode): Omit<SurfaceMesh, 'norm
   let nextVertex = nGrid;
 
   const centroid = (j: number): [number, number, number] => {
-    let x = 0, y = 0, z = 0;
+    let x = 0,
+      y = 0,
+      z = 0;
     for (let i = 0; i < nu; i++) {
       const p = (j * nu + i) * 3;
       x += positions[p];

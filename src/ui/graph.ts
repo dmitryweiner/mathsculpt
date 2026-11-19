@@ -1,10 +1,6 @@
 // График профиля r(z): силуэт тела вращения на Canvas 2D (z вверх).
 
-export function drawProfileGraph(
-  canvas: HTMLCanvasElement,
-  radiusFn: (t: number) => number,
-  height: number,
-): void {
+export function drawProfileGraph(canvas: HTMLCanvasElement, radiusFn: (t: number) => number, height: number): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);

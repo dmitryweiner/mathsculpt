@@ -30,25 +30,32 @@ const PORT = preview ? 4287 : 5287;
 const BASE = `http://localhost:${PORT}`;
 
 async function serverUp() {
-  try { return (await fetch(BASE)).ok; } catch { return false; }
+  try {
+    return (await fetch(BASE)).ok;
+  } catch {
+    return false;
+  }
 }
 
 let devProc = null;
 async function ensureServer() {
   if (await serverUp()) return;
-  const cmd = preview
-    ? ['vite', 'preview', '--port', String(PORT), '--strictPort']
-    : ['vite', '--port', String(PORT), '--strictPort'];
+  const cmd = preview ? ['vite', 'preview', '--port', String(PORT), '--strictPort'] : ['vite', '--port', String(PORT), '--strictPort'];
   devProc = spawn('npx', cmd, { stdio: 'ignore' });
   for (let i = 0; i < 30 && !(await serverUp()); i++) await new Promise((r) => setTimeout(r, 1000));
-  if (!(await serverUp())) { console.error(`server did not start on :${PORT}`); process.exit(1); }
+  if (!(await serverUp())) {
+    console.error(`server did not start on :${PORT}`);
+    process.exit(1);
+  }
 }
 
 const errors = [];
 let ctxLabel = 'app';
 function attach(page) {
   page.on('pageerror', (e) => errors.push(`[${ctxLabel}] ${String(e)}`));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(`[${ctxLabel}] ${m.text()}`); });
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(`[${ctxLabel}] ${m.text()}`);
+  });
 }
 
 await ensureServer();
@@ -84,8 +91,7 @@ for (const id of cardIds) {
 console.log(`cards toggled: ${cardIds.length}`);
 
 // каждый встроенный пресет грузится и даёт watertight-меш
-const presetValues = await page.$$eval('#presetSel option', (els) =>
-  els.map((e) => e.value).filter((v) => v.startsWith('b:')));
+const presetValues = await page.$$eval('#presetSel option', (els) => els.map((e) => e.value).filter((v) => v.startsWith('b:')));
 for (const v of presetValues) {
   ctxLabel = `preset:${v.slice(2)}`;
   await page.selectOption('#presetSel', v);

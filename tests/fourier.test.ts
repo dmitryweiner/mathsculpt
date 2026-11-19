@@ -8,11 +8,7 @@ describe('fourierRadius', () => {
   it('r(t) = r0 + Σ aₖ·sin(kπt + φₖ)', () => {
     const p = { r0: 0.3, a1: 0.1, phi1: 0.2, a2: 0.05, phi2: 1, a3: 0.02, phi3: 2 };
     const t = 0.37;
-    const expected =
-      0.3 +
-      0.1 * Math.sin(Math.PI * t + 0.2) +
-      0.05 * Math.sin(2 * Math.PI * t + 1) +
-      0.02 * Math.sin(3 * Math.PI * t + 2);
+    const expected = 0.3 + 0.1 * Math.sin(Math.PI * t + 0.2) + 0.05 * Math.sin(2 * Math.PI * t + 1) + 0.02 * Math.sin(3 * Math.PI * t + 2);
     expect(fourierRadius(p, t)).toBeCloseTo(expected, 9);
   });
 

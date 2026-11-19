@@ -76,7 +76,7 @@ describe('meshNormals', () => {
     expect(normals[k]).toBeGreaterThan(0.99);
     expect(Math.abs(normals[k + 2])).toBeLessThan(0.01);
     // центр нижней крышки — предпоследняя вершина, нормаль (0,0,−1)
-    const nb = (32 * 9) * 3;
+    const nb = 32 * 9 * 3;
     expect(normals[nb + 2]).toBeCloseTo(-1, 5);
   });
 });

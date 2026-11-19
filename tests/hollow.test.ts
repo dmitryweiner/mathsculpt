@@ -22,7 +22,11 @@ function boundaryVertexZ(mesh: { positions: Float32Array; indices: Uint32Array }
   const key = (a: number, b: number): number => (a < b ? a * nV + b : b * nV + a);
   for (let t = 0; t < mesh.indices.length; t += 3) {
     const tri = [mesh.indices[t], mesh.indices[t + 1], mesh.indices[t + 2]];
-    for (const [a, b] of [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]]) {
+    for (const [a, b] of [
+      [tri[0], tri[1]],
+      [tri[1], tri[2]],
+      [tri[2], tri[0]],
+    ]) {
       const k = key(a, b);
       count.set(k, (count.get(k) ?? 0) + 1);
     }

@@ -67,26 +67,22 @@ export interface ModTarget {
   exp?: boolean;
 }
 
-const NON_MODULATED = new Set([
-  'harmonics.l', 'harmonics.m', 'noise.octaves', 'noise.seed',
-  'symmetry.k', 'smooth.iterations',
-]);
+const NON_MODULATED = new Set(['harmonics.l', 'harmonics.m', 'noise.octaves', 'noise.seed', 'symmetry.k', 'smooth.iterations']);
 
-export const MOD_TARGETS: readonly ModTarget[] = [
-  ...DISPLACE_CARDS,
-  ...DEFORM_CARDS,
-].flatMap((card) => card.sliders.flatMap((slider) => {
-  if (NON_MODULATED.has(`${card.id}.${slider.k}`)) return [];
-  const exp = slider.min > 0 && (
-    slider.k === 'scale' || slider.k === 'power' || slider.k === 'step'
-  );
-  return [{
-    card: card.id,
-    param: slider.k,
-    range: [slider.min, slider.max] as const,
-    ...(exp ? { exp: true } : {}),
-  }];
-}));
+export const MOD_TARGETS: readonly ModTarget[] = [...DISPLACE_CARDS, ...DEFORM_CARDS].flatMap((card) =>
+  card.sliders.flatMap((slider) => {
+    if (NON_MODULATED.has(`${card.id}.${slider.k}`)) return [];
+    const exp = slider.min > 0 && (slider.k === 'scale' || slider.k === 'power' || slider.k === 'step');
+    return [
+      {
+        card: card.id,
+        param: slider.k,
+        range: [slider.min, slider.max] as const,
+        ...(exp ? { exp: true } : {}),
+      },
+    ];
+  }),
+);
 
 export function findModTarget(card: string, param: string): ModTarget | undefined {
   return MOD_TARGETS.find((t) => t.card === card && t.param === param);
@@ -118,42 +114,36 @@ export interface ModContext {
  * rate=1): z → v, θ → u/2π, спираль → v + k·u/2π, радиус → r/0.5,
  * расстояние от центра → d/(height/2).
  */
-export function lfoCoord(
-  lfo: SpatialLfoDef,
-  u: number,
-  v: number,
-  px: number,
-  py: number,
-  pz: number,
-  ctx: ModContext,
-): number {
+export function lfoCoord(lfo: SpatialLfoDef, u: number, v: number, px: number, py: number, pz: number, ctx: ModContext): number {
   switch (lfo.source) {
-    case 'z': return v;
-    case 'theta': return u / TWO_PI;
-    case 'spiral': return v + (lfo.k * u) / TWO_PI;
-    case 'radius': return Math.hypot(px, py) / 0.5;
-    case 'dist': return Math.hypot(px, py, pz - ctx.height / 2) / (ctx.height / 2);
+    case 'z':
+      return v;
+    case 'theta':
+      return u / TWO_PI;
+    case 'spiral':
+      return v + (lfo.k * u) / TWO_PI;
+    case 'radius':
+      return Math.hypot(px, py) / 0.5;
+    case 'dist':
+      return Math.hypot(px, py, pz - ctx.height / 2) / (ctx.height / 2);
   }
 }
 
 /** Значение LFO в точке → [-1, 1]. */
-export function lfoValueAt(
-  lfo: SpatialLfoDef,
-  u: number,
-  v: number,
-  px: number,
-  py: number,
-  pz: number,
-  ctx: ModContext,
-): number {
+export function lfoValueAt(lfo: SpatialLfoDef, u: number, v: number, px: number, py: number, pz: number, ctx: ModContext): number {
   const ph = lfo.rate * lfoCoord(lfo, u, v, px, py, pz, ctx) + lfo.phase;
   const frac = ph - Math.floor(ph); // [0, 1)
   switch (lfo.shape) {
-    case 'sine': return Math.sin(TWO_PI * ph);
-    case 'triangle': return frac < 0.5 ? 4 * frac - 1 : 3 - 4 * frac;
-    case 'saw': return 2 * frac - 1;
-    case 'square': return frac < 0.5 ? 1 : -1;
-    case 'random': return 2 * hash01(Math.floor(ph)) - 1;
+    case 'sine':
+      return Math.sin(TWO_PI * ph);
+    case 'triangle':
+      return frac < 0.5 ? 4 * frac - 1 : 3 - 4 * frac;
+    case 'saw':
+      return 2 * frac - 1;
+    case 'square':
+      return frac < 0.5 ? 1 : -1;
+    case 'random':
+      return 2 * hash01(Math.floor(ph)) - 1;
   }
 }
 
@@ -161,13 +151,7 @@ export function lfoValueAt(
  * Эффективное значение параметра: база + биполярная доля диапазона · LFO,
  * кламп в [min, max]. Для exp-параметров (min > 0) — маппинг в октавах.
  */
-export function effectiveParam(
-  base: number,
-  l: number,
-  depth: number,
-  range: readonly [number, number],
-  exp: boolean,
-): number {
+export function effectiveParam(base: number, l: number, depth: number, range: readonly [number, number], exp: boolean): number {
   const [min, max] = range;
   if (exp && min > 0 && max > 0) {
     const octaves = Math.log2(max / min);

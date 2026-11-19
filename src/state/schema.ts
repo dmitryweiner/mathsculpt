@@ -12,10 +12,7 @@ import type { BuildParams, CardState } from '../geo/build';
 import { defaultParams } from '../geo/build';
 import type { ModState, SpatialLfoDef, ModRoute } from '../geo/mod';
 import { LFO_COUNT, isLfoShape, isLfoSource, findModTarget, defaultLfo } from '../geo/mod';
-import {
-  DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, PROFILE_SHAPE_CARD,
-  SHAPE_CARDS, clampCardParam,
-} from '../formulas';
+import { DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, PROFILE_SHAPE_CARD, SHAPE_CARDS, clampCardParam } from '../formulas';
 import type { CardDef } from '../formulas';
 
 export interface CardSnapshot {
@@ -135,10 +132,7 @@ export function sanitizeState(u: unknown): PartialAppState | null {
   if (!isRecord(u)) return null;
   const out: PartialAppState = {};
   if (typeof u.presetName === 'string') out.presetName = u.presetName;
-  if (
-    typeof u.profile === 'string' &&
-    (isProfileId(u.profile) || u.profile === FOURIER_PROFILE_ID || isShapeId(u.profile))
-  ) {
+  if (typeof u.profile === 'string' && (isProfileId(u.profile) || u.profile === FOURIER_PROFILE_ID || isShapeId(u.profile))) {
     out.profile = u.profile;
   }
   if (isCapMode(u.caps)) out.caps = u.caps;
@@ -170,11 +164,7 @@ export function sanitizeState(u: unknown): PartialAppState | null {
   return out;
 }
 
-function applyCards(
-  target: Record<string, CardState>,
-  defs: readonly CardDef[],
-  partial?: Record<string, PartialCardSnapshot>,
-): void {
+function applyCards(target: Record<string, CardState>, defs: readonly CardDef[], partial?: Record<string, PartialCardSnapshot>): void {
   if (!partial) return;
   for (const [id, snap] of Object.entries(partial)) {
     const card = target[id];

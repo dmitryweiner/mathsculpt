@@ -63,11 +63,7 @@ describe('encodeSTL', () => {
       expect(Math.hypot(n[0], n[1], n[2])).toBeCloseTo(1, 4);
       const ab = tri[1].map((x, c) => x - tri[0][c]);
       const ac = tri[2].map((x, c) => x - tri[0][c]);
-      const cross = [
-        ab[1] * ac[2] - ab[2] * ac[1],
-        ab[2] * ac[0] - ab[0] * ac[2],
-        ab[0] * ac[1] - ab[1] * ac[0],
-      ];
+      const cross = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
       const len = Math.hypot(cross[0], cross[1], cross[2]);
       // косинус угла между нормалью и произведением обхода ≈ 1
       const dot = (n[0] * cross[0] + n[1] * cross[1] + n[2] * cross[2]) / len;
