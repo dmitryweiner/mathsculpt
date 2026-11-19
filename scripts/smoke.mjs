@@ -71,21 +71,6 @@ async function setSlider(page, id, value) {
   await slider.dispatchEvent('change');
 }
 
-/**
- * Обещание или провал через `ms`: `offline()` кита ждёт
- * `serviceWorker.ready` без срока (известная беда кита, его plans/PLAN.md),
- * и сборка, чей воркер не встал, повесила бы смоук вместо провала.
- */
-function within(promise, ms, what) {
-  let timer;
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`${what}: no answer in ${ms / 1000} s`)), ms);
-    }),
-  ]).finally(() => clearTimeout(timer));
-}
-
 /** Высота модели в STL, мм: размах z по вершинам двоичного файла. */
 function stlHeight(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -366,11 +351,11 @@ await app.run(
     if (flags.has('preview')) {
       // офлайн после первого визита: страница, воркер сборки и выгрузка STL — из кэша
       await app.step('works offline after the first visit: the page, the worker, an STL', async () => {
-        const { page, context } = await within(
-          offline(app, { locale: 'en-US', viewport: VIEWPORTS.desktop, ready: (p) => p.waitForSelector('#status[data-build]') }),
-          30000,
-          'the service worker never became ready',
-        );
+        const { page, context } = await offline(app, {
+          locale: 'en-US',
+          viewport: VIEWPORTS.desktop,
+          ready: (p) => p.waitForSelector('#status[data-build]'),
+        });
         try {
           await setSlider(page, 'shape_height', '100');
           await page.waitForSelector('#status[data-build="full"]', { timeout: 15000 });
@@ -385,11 +370,8 @@ await app.run(
       await app.step('a new deploy reloads a page already open', async () => {
         const { page, context } = await app.open({ locale: 'en-US', viewport: VIEWPORTS.desktop });
         try {
-          await within(
-            page.evaluate(() => navigator.serviceWorker.ready.then(() => true)),
-            30000,
-            'the service worker never became ready',
-          );
+          // воркер уже встал на прошлом шаге (иначе прогон кончился бы там): ожидание не повиснет
+          await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
           await page.evaluate(() => {
             window.oldPage = true;
           });

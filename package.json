@@ -18,7 +18,7 @@
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
-    "maker-kit": "github:dmitryweiner/maker-kit#v0.5.1",
+    "maker-kit": "github:dmitryweiner/maker-kit#v0.5.2",
     "three": "^0.178.0"
   },
   "devDependencies": {

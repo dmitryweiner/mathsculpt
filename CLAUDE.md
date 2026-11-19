@@ -15,7 +15,7 @@ list, the list card (modulation routes), the language picker, the worker
 queue (`WorkerClient`, `serveJobs`), meshes and normals, STL, the export
 gate (`3d/validate`), the 3D view, the smoke harness and the design code are
 maker-kit's ([maker-kit](https://github.com/dmitryweiner/maker-kit),
-`~/projects/maker-kit`, by tag: `#v0.5.1`). The kit's docs are in its
+`~/projects/maker-kit`, by tag: `#v0.5.2`). The kit's docs are in its
 `docs/` (the package ships none); the showcase is
 <https://dmitryweiner.github.io/maker-kit/>.
 
