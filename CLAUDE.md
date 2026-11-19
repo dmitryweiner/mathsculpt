@@ -12,7 +12,7 @@ Existing helpers:
 
 - `scripts/snap.mjs` — single debug screenshot of the app. Flags:
   `--out <path>` (required), `--profile <id>`, `--preset <id>` (`gyroid-sphere`, …),
-  `--hash <token>`, `--caps <both|bottom>`, `--wall <mm>`,
+  `--caps <both|bottom>`, `--wall <mm>`,
   `--set <id>=<value>` (repeatable — a panel slider or select by its id, set
   as released; a folded card is opened first; e.g.
   `--set p_profileShape_belly=0.6`), `--eval <js>` (repeatable — prints the
@@ -25,8 +25,8 @@ Existing helpers:
   `shape_height`, `export_resolution`; a card's switch `p_<card>_on`, its
   parameters `p_<card>_<key>`; `lfo<i>_<key>`, `route<i>_<key>`.
 - `scripts/smoke.mjs` — headless smoke over every profile/card/preset + worker,
-  modulation, wall/open-top, profile-shape, share round-trip. `--preview` runs
-  the prod build.
+  modulation, wall/open-top, profile-shape, presets through the kit's dialog,
+  undo/redo, 💾 + reload, the phone sheet. `--preview` runs the prod build.
 - `scripts/shot.mjs` — one screenshot per profile into `./shots`.
 
 When a new one-off check is needed more than once, add it to `snap.mjs`/`smoke.mjs`
