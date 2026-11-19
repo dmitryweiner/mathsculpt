@@ -36,7 +36,9 @@ function carrierShown(def: CardDef, profile: string): boolean {
   return def.id === PROFILE_SHAPE_CARD.id ? isProfileId(profile) : def.id === profile;
 }
 
+/** Рисует панель в свои места, начисто: после смены языка — заново (свёрнутость карточек — `snapshotCards` кита). */
 export function renderPanel(hosts: PanelHosts, o: PanelOptions): PanelHandle {
+  for (const host of Object.values(hosts)) host.replaceChildren();
   const state = o.read();
   const syncs: ((state: AppState) => void)[] = [];
   const controls = (host: HTMLElement, rows: readonly Row[], idPrefix: string): ControlsHandle<AppState> =>

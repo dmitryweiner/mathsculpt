@@ -6,7 +6,8 @@ import { renderPanel } from '../src/ui/panel';
 import type { PanelHandle } from '../src/ui/panel';
 import { defaultState } from '../src/state/schema';
 import type { AppState } from '../src/state/schema';
-import { t } from '../src/i18n';
+import { setLang, t } from '../src/i18n';
+import { restoreCards, snapshotCards } from 'maker-kit/ui/card';
 
 interface Harness {
   panel: PanelHandle;
@@ -117,5 +118,24 @@ describe('панель', () => {
     expect(h.get().mod.routes).toHaveLength(0);
     expect(document.getElementById('route0_depth')).toBeNull();
     expect(document.querySelector('.mod-badge')).toBeNull();
+  });
+
+  it('после смены языка панель рисуется заново на нём: карточки не двоятся, свёрнутые остаются свёрнутыми', () => {
+    const h = mount();
+    const hosts = ['shapeControls', 'carrierCards', 'displaceCards', 'deformCards', 'modCard'].map((id) => document.getElementById(id));
+    const [shape, carriers, displace, deform, mod] = hosts;
+    if (!shape || !carriers || !displace || !deform || !mod) throw new Error('hosts');
+    document.querySelector<HTMLButtonElement>('#card_ripples .fcard-head')?.click();
+    const folded = snapshotCards(document.body);
+    try {
+      setLang('ru');
+      renderPanel({ shape, carriers, displace, deform, mod }, { read: () => h.get(), change: () => undefined, t });
+      restoreCards(document.body, folded);
+      expect(document.querySelectorAll('#card_ripples')).toHaveLength(1);
+      expect(document.querySelector('label[for="p_ripples_amp"]')?.textContent).toBe('Амплитуда');
+      expect(document.getElementById('card_ripples')?.classList.contains('collapsed')).toBe(true);
+    } finally {
+      setLang('en');
+    }
   });
 });
