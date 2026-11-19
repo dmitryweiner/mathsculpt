@@ -89,11 +89,10 @@ describe('share round-trip', () => {
     params.displace.harmonics.params.l = 7;
     params.deform.twist = { on: true, params: { turns: 0.4 } };
     params.caps = 'bottom';
-    const state = paramsToState(params, 150, 3.5, 'My goblet');
+    const state = paramsToState(params, 150, 3.5);
     const token = encodeStateToken(state);
     expect(token).toMatch(/^[A-Za-z0-9\-_]+$/);
     const decoded = decodeStateToken(token);
-    expect(decoded?.presetName).toBe('My goblet');
     expect(decoded?.heightMm).toBe(150);
     expect(decoded?.wallMm).toBe(3.5);
     const p2 = stateToParams(decoded ?? {});
@@ -102,6 +101,11 @@ describe('share round-trip', () => {
     expect(p2.displace.harmonics.params.l).toBe(7);
     expect(p2.deform.twist.on).toBe(true);
     expect(p2.deform.twist.params.turns).toBe(0.4);
+  });
+
+  it('имя пресета в старой ссылке не попадает в состояние', () => {
+    const token = b64urlEncode(JSON.stringify({ ...paramsToState(defaultParams(), 120, 2), presetName: 'Old' }));
+    expect(decodeStateToken(token)).not.toHaveProperty('presetName');
   });
 
   it('битые токены → null', () => {

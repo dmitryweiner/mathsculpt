@@ -1,6 +1,10 @@
 // Схема сериализуемого состояния v1 (URL-хэш, localStorage, пресеты).
 // Разбор терпимый: неизвестные/битые поля молча отбрасываются и накрываются
 // дефолтами. Без as-кастов — только type guards.
+//
+// Имени пресета в состоянии нет: какой пресет открыт, приложение держит
+// рядом (`PresetRef` кита), а `presetName` старых ссылок и пресетов
+// отбрасывается при разборе.
 
 import type { CapMode } from '../geo/surface';
 import type { Params } from '../geo/displace';
@@ -22,7 +26,6 @@ export interface CardSnapshot {
 
 export interface AppState {
   v: 1;
-  presetName?: string;
   profile: string;
   caps: CapMode;
   heightMm: number;
@@ -42,7 +45,6 @@ export interface PartialCardSnapshot {
 }
 
 export interface PartialAppState {
-  presetName?: string;
   profile?: string;
   caps?: CapMode;
   heightMm?: number;
@@ -131,7 +133,6 @@ function sanitizeMod(u: unknown): ModState | undefined {
 export function sanitizeState(u: unknown): PartialAppState | null {
   if (!isRecord(u)) return null;
   const out: PartialAppState = {};
-  if (typeof u.presetName === 'string') out.presetName = u.presetName;
   if (typeof u.profile === 'string' && (isProfileId(u.profile) || u.profile === FOURIER_PROFILE_ID || isShapeId(u.profile))) {
     out.profile = u.profile;
   }
@@ -228,7 +229,7 @@ export function stateToParams(partial: PartialAppState): BuildParams {
 }
 
 /** Полное состояние из параметров сборки (для share/сохранения). */
-export function paramsToState(p: BuildParams, heightMm: number, wallMm: number, presetName?: string): AppState {
+export function paramsToState(p: BuildParams, heightMm: number, wallMm: number): AppState {
   const cards = (src: Record<string, CardState>): Record<string, CardSnapshot> => {
     const out: Record<string, CardSnapshot> = {};
     for (const [id, card] of Object.entries(src)) {
@@ -257,6 +258,20 @@ export function paramsToState(p: BuildParams, heightMm: number, wallMm: number, 
       routes: p.mod.routes.map((r) => ({ ...r })),
     },
   };
-  if (presetName) state.presetName = presetName;
   return state;
+}
+
+/** Полное состояние из частичного: дефолты под тем, что задано. */
+export function completeState(partial: PartialAppState): AppState {
+  return paramsToState(stateToParams(partial), partial.heightMm ?? DEFAULT_HEIGHT_MM, partial.wallMm ?? DEFAULT_WALL_MM);
+}
+
+/** Модель по умолчанию. */
+export function defaultState(): AppState {
+  return completeState({});
+}
+
+/** Полное чистое состояние из чего угодно (хранилище, файл): мусор — модель по умолчанию. */
+export function cleanState(u: unknown): AppState {
+  return completeState(sanitizeState(u) ?? {});
 }

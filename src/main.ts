@@ -19,11 +19,17 @@ import { setupAdjustmentButtons } from './ui/adjust';
 import { el } from './ui/dom';
 import { drawProfileGraph } from './ui/graph';
 import { buildModPanel, updateModBadges } from './ui/modmatrix';
-import { DEFAULT_HEIGHT_MM, DEFAULT_WALL_MM, paramsToState, stateToParams, sanitizeState } from './state/schema';
-import type { PartialAppState } from './state/schema';
+import { History } from 'maker-kit/core/history';
+import type { PresetRef } from 'maker-kit/core/presets';
+import { isPresetRef, nextPresetName, presetRef as makePresetRef } from 'maker-kit/core/presets';
+import { browserStorage, loadRecord, saveRecord } from 'maker-kit/core/storage';
+import { DEFAULT_HEIGHT_MM, DEFAULT_WALL_MM, completeState, defaultState, paramsToState, stateToParams } from './state/schema';
+import type { AppState } from './state/schema';
 import { encodeStateToken, decodeStateToken, tokenFromHash } from './state/share';
-import { PRESETS } from './presets';
-import { loadUserPresets, saveUserPresets, nextPresetNumber } from './state/userPresets';
+import { PRESETS, presetById } from './state/presets';
+import type { SculptPreset } from './state/userPresets';
+import { savePresetAs, userPresetsRecord } from './state/userPresets';
+import { autoPresetPrefixes, t, tDynamic } from './i18n';
 
 const PREVIEW_N = 96;
 
@@ -50,7 +56,8 @@ const progressLabel = el('progressLabel', HTMLSpanElement);
 
 // --- состояние ---
 let params: BuildParams = defaultParams();
-let presetName = '';
+/** открытый пресет (`b:<id>`, `u:<id>`) или никакой */
+let presetRef: PresetRef = '';
 // толщина стенки задаётся в мм (UI), в build уходит относительной величиной
 let wallMm = DEFAULT_WALL_MM;
 
@@ -143,29 +150,44 @@ modToggle.addEventListener('click', () => {
   modCaret.textContent = modWrap.hidden ? '▸' : '▾';
 });
 
-// --- пресеты ---
+// --- пресеты: встроенные по id (`core/presets` кита), свои — запись кита ---
+const storage = browserStorage();
+let userPresets: SculptPreset[] = loadRecord(storage, userPresetsRecord) ?? [];
+
+function builtinName(id: string): string {
+  return tDynamic(`preset.${id}.name`);
+}
+
+/** Имя открытого пресета: встроенного — из словаря, своего — данное. */
+function currentName(): string {
+  const id = presetRef.slice(2);
+  if (presetRef.startsWith('b:')) return builtinName(id);
+  if (presetRef.startsWith('u:')) return userPresets.find((preset) => preset.id === id)?.name ?? '';
+  return '';
+}
+
 function refreshPresetList(): void {
   presetSel.innerHTML = '';
   const custom = document.createElement('option');
   custom.value = '';
-  custom.textContent = presetName ? `● ${presetName}` : '— preset —';
+  const name = currentName();
+  custom.textContent = name ? `● ${name}` : '— preset —';
   presetSel.appendChild(custom);
   const builtins = document.createElement('optgroup');
-  builtins.label = 'Built-in';
+  builtins.label = t('kit.preset.builtIn');
   for (const p of PRESETS) {
     const opt = document.createElement('option');
-    opt.value = `b:${p.name}`;
-    opt.textContent = p.name;
+    opt.value = makePresetRef('b', p.id);
+    opt.textContent = builtinName(p.id);
     builtins.appendChild(opt);
   }
   presetSel.appendChild(builtins);
-  const users = loadUserPresets();
-  if (users.length > 0) {
+  if (userPresets.length > 0) {
     const grp = document.createElement('optgroup');
-    grp.label = 'My presets';
-    for (const p of users) {
+    grp.label = t('kit.preset.mine');
+    for (const p of userPresets) {
       const opt = document.createElement('option');
-      opt.value = `u:${p.name}`;
+      opt.value = makePresetRef('u', p.id);
       opt.textContent = p.name;
       grp.appendChild(opt);
     }
@@ -174,11 +196,11 @@ function refreshPresetList(): void {
   presetSel.value = '';
 }
 
-function applyState(partial: PartialAppState): void {
-  params = stateToParams(partial);
-  presetName = partial.presetName ?? '';
-  if (typeof partial.heightMm === 'number') heightMmInput.value = String(partial.heightMm);
-  wallMm = typeof partial.wallMm === 'number' ? partial.wallMm : DEFAULT_WALL_MM;
+/** Показывает состояние целиком: параметры, высоту, стенку, карточки. */
+function showState(state: AppState): void {
+  params = stateToParams(state);
+  heightMmInput.value = String(state.heightMm);
+  wallMm = state.wallMm;
   wallInput.value = String(wallMm);
   profileSel.value = params.profile;
   capsSel.value = params.caps;
@@ -188,36 +210,31 @@ function applyState(partial: PartialAppState): void {
 }
 
 presetSel.addEventListener('input', () => {
-  const v = presetSel.value;
-  if (v.startsWith('b:')) {
-    const preset = PRESETS.find((p) => p.name === v.slice(2));
-    if (preset) applyState({ ...preset.state, presetName: preset.name });
-  } else if (v.startsWith('u:')) {
-    const preset = loadUserPresets().find((p) => p.name === v.slice(2));
-    if (preset) {
-      const st = sanitizeState(preset.state);
-      if (st) applyState({ ...st, presetName: preset.name });
-    }
-  }
+  const ref = presetSel.value;
+  if (!isPresetRef(ref)) return;
+  const id = ref.slice(2);
+  const state = ref.startsWith('b:') ? presetById(id)?.build() : userPresets.find((preset) => preset.id === id)?.state;
+  if (!state) return;
+  presetRef = ref;
+  showState(state);
 });
 
 saveBtn.addEventListener('click', () => {
-  const users = loadUserPresets();
-  const name = window.prompt('Preset name:', presetName || `Preset ${nextPresetNumber(users)}`);
+  const name = window.prompt(t('presets.prompt'), currentName() || nextPresetName(userPresets, autoPresetPrefixes(), t('presets.auto')));
   if (!name) return;
-  const state = paramsToState(params, readHeightMm(), wallMm, name);
-  const idx = users.findIndex((p) => p.name === name);
-  if (idx >= 0) users[idx] = { name, state };
-  else users.push({ name, state });
-  saveUserPresets(users);
-  presetName = name;
+  const saved = savePresetAs(userPresets, name, historySnapshot());
+  userPresets = saved.list;
+  presetRef = makePresetRef('u', saved.id);
+  // пресет остаётся в списке до перезагрузки, даже если браузер его не сохранил
+  const written = saveRecord(storage, userPresetsRecord, userPresets);
   refreshPresetList();
+  if (written !== 'ok') warnings.textContent = t(written === 'full' ? 'kit.storage.preset.saveFull' : 'kit.storage.preset.save');
 });
 
 shareBtn.addEventListener('click', () => {
-  const token = encodeStateToken(paramsToState(params, readHeightMm(), wallMm, presetName || undefined));
+  const token = encodeStateToken(historySnapshot());
   const url = `${location.origin}${location.pathname}#s=${token}`;
-  history.replaceState(null, '', `#s=${token}`);
+  window.history.replaceState(null, '', `#s=${token}`);
   navigator.clipboard?.writeText(url).then(
     () => flash(shareBtn, 'Copied!'),
     () => flash(shareBtn, 'Link in URL'),
@@ -239,86 +256,67 @@ let fullTimer: ReturnType<typeof setTimeout> | null = null;
 let lastFullMesh: SurfaceMesh | null = null;
 let fullDirty = true;
 
-// --- bounded, coalesced application-state history ---
+// --- история: китовая (`core/history`) ---
+// Правки идут в неё кадрами (`live`), а шагом (`commit`) становятся, когда
+// стихнут на 300 мс: так пачка движений ползунка — один шаг. Таймер уйдёт,
+// когда контролы кита скажут о конце правки сами (`final`, m5-controls).
 const HISTORY_LIMIT = 100;
 const HISTORY_COALESCE_MS = 300;
-const undoStack: PartialAppState[] = [];
-const redoStack: PartialAppState[] = [];
-let historyPresent: PartialAppState | null = null;
-let pendingHistoryBase: PartialAppState | null = null;
+const history = new History<AppState>(defaultState(), HISTORY_LIMIT);
 let historyTimer: ReturnType<typeof setTimeout> | null = null;
+/** состояние показывается из истории (отмена, старт): это не правка */
 let restoringHistory = false;
 
 function readHeightMm(): number {
   return Math.min(400, Math.max(5, Number(heightMmInput.value) || DEFAULT_HEIGHT_MM));
 }
 
-function historySnapshot(): PartialAppState {
-  return paramsToState(params, readHeightMm(), wallMm, presetName || undefined);
-}
-
-function sameState(a: PartialAppState, b: PartialAppState): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+function historySnapshot(): AppState {
+  return paramsToState(params, readHeightMm(), wallMm);
 }
 
 function syncHistoryButtons(): void {
-  undoBtn.disabled = undoStack.length === 0 && pendingHistoryBase === null;
-  redoBtn.disabled = redoStack.length === 0;
+  undoBtn.disabled = !history.canUndo && historyTimer === null;
+  redoBtn.disabled = !history.canRedo;
 }
 
+/** Ждущая правка становится шагом. */
 function flushHistory(): void {
-  if (historyTimer) clearTimeout(historyTimer);
-  historyTimer = null;
-  if (pendingHistoryBase) {
-    undoStack.push(pendingHistoryBase);
-    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-    pendingHistoryBase = null;
+  if (historyTimer !== null) {
+    clearTimeout(historyTimer);
+    historyTimer = null;
+    history.commit(history.state);
   }
   syncHistoryButtons();
 }
 
 function recordHistory(): void {
+  if (restoringHistory) return;
   const next = historySnapshot();
-  if (restoringHistory) {
-    historyPresent = next;
-    return;
-  }
-  if (!historyPresent) {
-    historyPresent = next;
-    syncHistoryButtons();
-    return;
-  }
-  if (sameState(historyPresent, next)) return;
-  if (!pendingHistoryBase) pendingHistoryBase = historyPresent;
-  historyPresent = next;
-  redoStack.length = 0;
-  if (historyTimer) clearTimeout(historyTimer);
+  if (JSON.stringify(next) === JSON.stringify(history.state)) return;
+  history.live(next);
+  if (historyTimer !== null) clearTimeout(historyTimer);
   historyTimer = setTimeout(flushHistory, HISTORY_COALESCE_MS);
   syncHistoryButtons();
 }
 
-function restoreHistory(state: PartialAppState): void {
+function restoreHistory(state: AppState): void {
   restoringHistory = true;
-  applyState(state);
+  showState(state);
   restoringHistory = false;
-  historyPresent = historySnapshot();
   syncHistoryButtons();
 }
 
 function undo(): void {
   flushHistory();
-  const previous = undoStack.pop();
-  if (!previous || !historyPresent) return;
-  redoStack.push(historyPresent);
-  restoreHistory(previous);
+  const previous = history.undo();
+  if (previous) restoreHistory(previous);
 }
 
 function redo(): void {
   flushHistory();
-  const next = redoStack.pop();
-  if (!next || !historyPresent) return;
-  undoStack.push(historyPresent);
-  restoreHistory(next);
+  const next = history.redo();
+  if (next) restoreHistory(next);
 }
 
 undoBtn.addEventListener('click', undo);
@@ -521,7 +519,7 @@ exportBtn.addEventListener('click', () => {
     return;
   const zExtent = report.bbox.max[2] - report.bbox.min[2];
   const targetMm = readHeightMm();
-  const name = presetName || params.profile;
+  const name = currentName() || params.profile;
   const buf = encodeSTL(mesh, { scale: targetMm / zExtent, name });
   const blob = new Blob([buf], { type: 'model/stl' });
   const a = document.createElement('a');
@@ -531,13 +529,9 @@ exportBtn.addEventListener('click', () => {
   URL.revokeObjectURL(a.href);
 });
 
-// --- старт: share-ссылка или дефолты ---
+// --- старт: share-ссылка или дефолты; это начало истории, а не шаг ---
 const token = tokenFromHash(location.hash);
 const fromUrl = token ? decodeStateToken(token) : null;
-if (fromUrl) {
-  applyState(fromUrl);
-} else {
-  rebuildCards();
-  refreshPresetList();
-  onParamChange();
-}
+restoreHistory(fromUrl ? completeState(fromUrl) : defaultState());
+history.reset(historySnapshot());
+syncHistoryButtons();

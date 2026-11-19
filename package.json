@@ -17,6 +17,7 @@
     "shot": "node scripts/shot.mjs"
   },
   "dependencies": {
+    "maker-kit": "github:dmitryweiner/maker-kit#v0.5.1",
     "three": "^0.178.0"
   },
   "devDependencies": {

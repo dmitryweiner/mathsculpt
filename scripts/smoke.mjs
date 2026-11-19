@@ -101,6 +101,36 @@ for (const v of presetValues) {
 }
 console.log(`presets checked: ${presetValues.length}`);
 
+// отмена и повтор: правка ползунка — один шаг; ↩️ возвращает, ↪️ повторяет
+ctxLabel = 'undo';
+await page.goto(BASE);
+await page.waitForTimeout(400);
+const amp = page.locator('#p_ripples_amp');
+const ampBefore = await amp.inputValue();
+await amp.fill('0.08');
+await amp.dispatchEvent('input');
+// шагом правка становится, когда стихнет на 300 мс
+await page.waitForTimeout(450);
+await page.locator('#undoBtn').click();
+await page.waitForTimeout(150);
+if ((await amp.inputValue()) !== ampBefore) errors.push(`[undo] amp=${await amp.inputValue()}, expected ${ampBefore}`);
+await page.locator('#redoBtn').click();
+await page.waitForTimeout(150);
+if ((await amp.inputValue()) !== '0.08') errors.push(`[redo] amp=${await amp.inputValue()}, expected 0.08`);
+if (!(await page.locator('#redoBtn').isDisabled())) errors.push('[redo] still enabled at the newest step');
+console.log('undo/redo ok');
+
+// 💾: пресет под именем из prompt — в «My presets», и после перезагрузки тоже
+ctxLabel = 'savePreset';
+page.once('dialog', (dialog) => dialog.accept('Smoke preset'));
+await page.locator('#saveBtn').click();
+await page.waitForTimeout(200);
+await page.reload();
+await page.waitForTimeout(400);
+const mine = await page.$$eval('#presetSel option[value^="u:"]', (els) => els.map((e) => e.textContent));
+if (!mine.includes('Smoke preset')) errors.push(`[savePreset] my presets: ${JSON.stringify(mine)}`);
+else console.log('save preset ok');
+
 // open top + слайдер толщины стенки: wall=0 → оболочка, wall>0 → watertight-солид
 ctxLabel = 'wall';
 await page.selectOption('#caps', 'bottom');

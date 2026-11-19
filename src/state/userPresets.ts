@@ -1,39 +1,37 @@
-// Пользовательские пресеты в localStorage (порт из formula-synth).
+// Пользовательские пресеты в localStorage — запись кита (`core/storage`).
+// Чтение никогда не бросает: хранилище может быть недоступно (приватный
+// режим) или хранить мусор прошлых версий — приложение обязано открыться в
+// любом случае. Неудачная запись говорит почему (`StorageWrite`), и
+// приложение это показывает.
+//
+// Ключ — прежний. До кита пресеты лежали голым списком `{ name, state }` и
+// узнавались по имени: кит читает его как версию 0 и раздаёт id `u<n>`,
+// которые потом не меняются при переименовании.
+
+import type { StoredRecord } from 'maker-kit/core/storage';
+import type { UserPreset } from 'maker-kit/core/presets';
+import { addUserPreset, readUserPresets } from 'maker-kit/core/presets';
 import type { AppState } from './schema';
+import { cleanState } from './schema';
 
 export const USER_PRESETS_KEY = 'mathsculpt_user_presets_v1';
 
-export interface UserPreset {
-  name: string;
-  state: AppState;
-}
+export type SculptPreset = UserPreset<AppState>;
 
-function isUserPreset(u: unknown): u is UserPreset {
-  return typeof u === 'object' && u !== null && typeof Reflect.get(u, 'name') === 'string' && typeof Reflect.get(u, 'state') === 'object';
-}
+export const userPresetsRecord: StoredRecord<SculptPreset[]> = {
+  key: USER_PRESETS_KEY,
+  version: 1,
+  write: (presets) => ({ presets }),
+  read: (data, version) =>
+    readUserPresets(version === 0 ? data : typeof data === 'object' && data !== null ? Reflect.get(data, 'presets') : null, cleanState),
+};
 
-export function loadUserPresets(): UserPreset[] {
-  try {
-    const raw = localStorage.getItem(USER_PRESETS_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isUserPreset);
-  } catch {
-    return [];
-  }
-}
-
-export function saveUserPresets(presets: UserPreset[]): void {
-  localStorage.setItem(USER_PRESETS_KEY, JSON.stringify(presets));
-}
-
-/** Следующий свободный номер для автоимени "Preset N". */
-export function nextPresetNumber(presets: UserPreset[]): number {
-  let maxNum = 0;
-  for (const p of presets) {
-    const match = p.name.match(/^Preset (\d+)$/);
-    if (match) maxNum = Math.max(maxNum, Number(match[1]));
-  }
-  return maxNum + 1;
+/**
+ * 💾 под именем: занятое имя заменяет тот пресет — его id и место в списке
+ * остаются, как было до кита, когда пресет и был своим именем.
+ */
+export function savePresetAs(list: readonly SculptPreset[], name: string, state: AppState): { list: SculptPreset[]; id: string } {
+  const same = list.find((preset) => preset.name === name);
+  if (!same) return addUserPreset(list, name, state);
+  return { list: list.map((preset) => (preset === same ? { ...preset, state } : preset)), id: same.id };
 }
