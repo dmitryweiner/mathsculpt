@@ -1,6 +1,6 @@
 # PLAN-MAKER-KIT.md — MathSculpt на maker-kit (M5)
 
-**Статус: в работе.** PR: #1 план и инструменты (слит), #2 core (слит), #3 controls, #4 ui, #5 i18n, #6 3d, #7 harness, #8 docs; строка M5 в плане кита — maker-kit#29. Кит — `v0.5.1` без правок.
+**Статус: в работе.** PR: #1 план и инструменты (слит), #2 core (слит), #3 controls, #4 ui, #5 i18n, #6 3d, #7 harness, #8 docs, #9 📄 Новое; строка M5 в плане кита — maker-kit#29. Кит — `v0.5.1` без правок.
 
 Case Constructor, Plate Builder, Cast Builder и ClayForm уже стоят на
 [maker-kit](https://github.com/dmitryweiner/maker-kit) (`~/projects/maker-kit`,
@@ -261,3 +261,9 @@ MathSculpt отстаёт от остальных сильнее, чем ClayFor
   `docs/harness.md`), `_conventions/3d-tools.md` и `_conventions/README.md`
   — MathSculpt среди приложений на ките (папка не под git, правка на
   месте).
+- **📄 Новое** (2026-11-19): пустой пресет кита — `{ id: 'blank', listed:
+  false, build: defaultState }` первым в `PRESETS`, в диалоге его нет;
+  имя «New model» / «Новая модель» / «Нова модель» / «מודל חדש» встаёт на
+  кнопку пресетов. Открывается одним шагом отмены. Кнопка — первой в
+  инструментах шапки, как у остальных приложений. Смоук: после пресета 📄
+  даёт модель по умолчанию с этим именем, ↶ возвращает пресет.
