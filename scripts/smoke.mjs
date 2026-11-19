@@ -175,6 +175,43 @@ await app.run(
       check(mine.includes('Smoke preset'), `my presets: ${JSON.stringify(mine)}`);
     });
 
+    // модель в браузере: после перезагрузки — та же модель, тот же пресет на кнопке и ●
+    await step('the model survives a reload', async (page) => {
+      await page.locator('#presetBtn').click();
+      await page.locator('#presetList .preset-row[data-ref="b:gyroid-sphere"] .preset-pick').click();
+      await page.waitForTimeout(300);
+      await setSlider(page, 'shape_height', '90');
+      await page.waitForTimeout(200);
+      await page.reload();
+      await page.waitForSelector('#status[data-build]');
+      check((await page.locator('#shape_profile').inputValue()) === 'sphere', 'the sphere is gone after a reload');
+      check(
+        (await page.locator('#shape_height').inputValue()) === '90',
+        `height ${await page.locator('#shape_height').inputValue()} after a reload`,
+      );
+      check((await page.locator('#presetBtn').textContent()).trim() === 'Gyroid sphere', 'the preset name is gone after a reload');
+      check(await page.locator('#presetBtn').evaluate((node) => node.classList.contains('changed')), 'the ● is gone after a reload');
+    });
+
+    // хранилище заблокировано (приватное окно): баннер кита говорит, что модель не хранится
+    await step(
+      "blocked storage: the kit's banner says the model is not kept",
+      async (page) => {
+        check(await page.locator('#storageNote').isHidden(), 'a banner before any edit');
+        await setSlider(page, 'shape_height', '90');
+        await page.waitForTimeout(200);
+        check(await page.locator('#storageNote').isVisible(), 'no banner when the storage refuses');
+        check(await page.locator('#storageNote').evaluate((node) => node.classList.contains('bad')), 'the banner is not red');
+      },
+      {
+        script: () => {
+          Storage.prototype.setItem = () => {
+            throw new DOMException('blocked', 'SecurityError');
+          };
+        },
+      },
+    );
+
     // ⬇️ файл проекта и 📂 обратно: модель и данное имя; чужой JSON — отказ словами кита
     await step('the project file: ⬇️ saves, 📂 opens it back, a foreign file is refused', async (page) => {
       await page.locator('#presetBtn').click();
