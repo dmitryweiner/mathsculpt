@@ -1,11 +1,10 @@
 /*
  * Своё поверх кита (maker-kit/styles/kit.css импортируется первым и лежит в
- * @layer kit — любое правило здесь его побеждает). Карточки, строки,
- * ползунки с −/+ и точным полем, список маршрутов — китовые; здесь палитра
- * и то, чего у кита нет: заголовки групп, график профиля, бейдж ∿.
- *
- * Раскладка страницы (шапка, панель, вид, полоса прогресса) пока своя,
- * от десктопа; её заменит раскладка кита (m5-ui, plans/PLAN-MAKER-KIT.md).
+ * @layer kit — любое правило здесь его побеждает). Рамка — шапка, панель и
+ * лист, диалог, баннер, полоса прогресса, карточки и строки, список
+ * маршрутов, список сообщений — китовая; здесь палитра и то, чего у кита
+ * нет: заголовки групп, график профиля, бейдж ∿, строка статуса. От
+ * телефона вверх, логическими свойствами.
  */
 
 :root {
@@ -57,152 +56,10 @@
   margin-block-start: 6px;
 }
 
-/* --- раскладка страницы до m5-ui --- */
-
-#app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-#topbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--line);
-}
-
-#brand {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  margin-right: 6px;
-}
-
-.tb-spacer {
-  flex: 1;
-}
-
-.tb-btn {
-  padding: 5px 12px;
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.tb-btn:hover {
-  border-color: var(--accent);
-}
-
-.tb-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.tb-btn.primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
-  border: none;
-}
-
-#topbar select {
-  max-width: 190px;
-}
-
-#content {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-#panel {
-  width: var(--panel-w);
-  flex: none;
-  padding: 12px;
-  background: var(--panel);
-  overflow-y: auto;
-}
-
+/* строка статуса под кнопкой экспорта: треугольники, замкнутость, сборка, время */
 #status {
+  margin: var(--space-2) 2px 0;
   color: var(--muted);
-  font-size: 12px;
-  white-space: pre-line;
-  margin: 10px 2px 0;
-}
-
-#warnings {
-  color: var(--warn);
-  font-size: 12px;
-  white-space: pre-line;
-  margin: 4px 2px 0;
-}
-
-#viewWrap {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-#view {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-#progressWrap {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#progressBar {
-  flex: 1;
-  height: 6px;
-  background: rgb(139 152 165 / 25%);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-#progressFill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent);
-  transition: width 0.12s linear;
-}
-
-#progressLabel {
-  color: var(--muted);
-  font-size: 11px;
-  min-width: 80px;
-}
-
-@media (max-width: 760px) {
-  #topbar {
-    flex-wrap: wrap;
-    row-gap: 6px;
-  }
-
-  #content {
-    flex-direction: column-reverse;
-  }
-
-  #panel {
-    width: 100%;
-    max-height: 48vh;
-    border-top: 1px solid var(--line);
-  }
-
-  #viewWrap {
-    min-height: 40vh;
-  }
+  font-size: var(--font-tiny);
+  font-variant-numeric: tabular-nums;
 }

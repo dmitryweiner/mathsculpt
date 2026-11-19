@@ -10,6 +10,33 @@ import { kitEn } from 'maker-kit/i18n/index';
 export const en = {
   ...kitEn,
   'app.title': 'MathSculpt — printable surfaces from formulas',
+  'topbar.presets.title': 'Built-in and saved presets',
+
+  // --- panel sections ---
+  'panel.shape': 'Shape',
+  'panel.displace': 'Displacements',
+  'panel.deform': 'Deformers',
+  'panel.export': 'STL export',
+
+  // --- export: the button, the status line, the verdicts of the app's own ---
+  'export.button': 'Export STL',
+  'export.blocked': 'Export blocked: the mesh would not print.',
+  'status.line': '{k}k triangles · {closed} · {build} · {ms} ms',
+  'status.watertight': 'watertight ✓',
+  'status.notWatertight': 'NOT watertight ✗',
+  'status.shell': 'open top (zero-wall shell)',
+  'status.preview': 'preview',
+  'status.full': 'full {n}×{n}',
+  'warn.overhang': 'Overhangs steeper than 60°: {pct} % of the surface (hard to print without supports).',
+  'warn.amplitude': 'The displacement amplitude exceeds the local radius — the surface may cut through itself.',
+
+  // --- the full build's stages, over the progress bar (geo/build's phases) ---
+  'stage.sampling': 'Sampling the surface',
+  'stage.displacing': 'Displacing',
+  'stage.deforming': 'Deforming',
+  'stage.assembling': 'Assembling',
+  'stage.normals': 'Normals',
+  'stage.done': 'Done',
 
   // --- presets: the built-in ones by id (core/presets), the auto name of a saved one ---
   'preset.classic-vase.name': 'Classic vase',
@@ -34,6 +61,7 @@ export const en = {
   'preset.star-polygon.name': 'Star polygon',
   'presets.auto': 'Preset',
   'presets.prompt': 'Preset name:',
+  'presets.title': 'Presets',
 
   // --- the Shape card: the carrier, the mode, the wall, the height ---
   'shape.profile': 'Profile',

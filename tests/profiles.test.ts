@@ -9,7 +9,7 @@ import {
   DEFAULT_PROFILE_SHAPE,
 } from '../src/geo/profiles';
 import { buildMesh, defaultParams } from '../src/geo/build';
-import { validateMesh } from '../src/geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
 import { sanitizeState, stateToParams } from '../src/state/schema';
 
 describe('профили-пресеты', () => {
