@@ -4,13 +4,13 @@
 //
 //   node scripts/snap.mjs --out shots/x.png
 //   node scripts/snap.mjs --profile torus --out shots/torus.png
-//   node scripts/snap.mjs --preset "Gyroid sphere" --out shots/g.png
+//   node scripts/snap.mjs --preset gyroid-sphere --out shots/g.png
 //   node scripts/snap.mjs --profile supershape --full --out shots/s.png   # дождаться worker
 //   node scripts/snap.mjs --width 390 --height 780 --out shots/mobile.png
 //   node scripts/snap.mjs --hash <token> --out shots/shared.png
 //   node scripts/snap.mjs --profile vase --set p_profileShape_belly=0.6 --out shots/x.png
 //
-// Флаги: --profile <id>, --preset <name>, --hash <token>, --caps <both|bottom>,
+// Флаги: --profile <id>, --preset <id> (src/state/presets.ts), --hash <token>, --caps <both|bottom>,
 //        --wall <mm>, --set <id>=<value> (повторяемый — любой input/slider),
 //        --width, --height, --wait <ms> (доп. пауза), --full (ждать полной
 //        сборки в worker), --out <path> (обязателен). Печатает #status и ошибки.

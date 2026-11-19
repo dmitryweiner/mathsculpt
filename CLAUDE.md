@@ -11,7 +11,7 @@ Extend an existing script with a new flag rather than cloning it.
 Existing helpers:
 
 - `scripts/snap.mjs` — single debug screenshot of the app. Flags:
-  `--out <path>` (required), `--profile <id>`, `--preset <name>`,
+  `--out <path>` (required), `--profile <id>`, `--preset <id>` (`gyroid-sphere`, …),
   `--hash <token>`, `--caps <both|bottom>`, `--wall <mm>`,
   `--set <id>=<value>` (repeatable — set any input/slider by element id, e.g.
   `--set p_profileShape_belly=0.6`), `--width`, `--height`, `--wait <ms>`,
