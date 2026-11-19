@@ -1,7 +1,7 @@
 // Встроенные пресеты: id уникальны, имя каждого — в словаре
 // (`preset.<id>.name`), состояние проходит sanitize без потерь (все
 // id/ключи валидны) и собирается в валидный закрытый меш.
-import { PRESETS, PRESET_STATES, presetById } from '../src/state/presets';
+import { BLANK_ID, PRESETS, PRESET_STATES, presetById } from '../src/state/presets';
 import { completeState, defaultState, sanitizeState, stateToParams } from '../src/state/schema';
 import { buildMesh } from '../src/geo/build';
 import { validateMesh } from 'maker-kit/3d/validate';
@@ -18,17 +18,24 @@ describe('встроенные пресеты', () => {
     for (const { id } of PRESETS) expect(Object.hasOwn(en, `preset.${id}.name`), id).toBe(true);
   });
 
+  it('📄 Новое — пустой пресет: модель по умолчанию, не в списке', () => {
+    const blank = presetById(BLANK_ID);
+    expect(blank?.listed).toBe(false);
+    expect(blank?.build()).toEqual(defaultState());
+    expect(PRESETS.filter((p) => p.listed !== false).map((p) => p.id)).toEqual(Object.keys(PRESET_STATES));
+  });
+
   it('presetById находит пресет и не находит чужой', () => {
     expect(presetById('classic-vase')?.id).toBe('classic-vase');
     expect(presetById('nope')).toBeUndefined();
   });
 
-  it.each(PRESETS.map((p) => [p.id] as const))('%s: sanitize ничего не отбрасывает', (id) => {
+  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: sanitize ничего не отбрасывает', (id) => {
     const partial = PRESET_STATES[id];
     expect(sanitizeState(partial)).toEqual(partial);
   });
 
-  it.each(PRESETS.map((p) => [p.id] as const))('%s: полное состояние — дефолты под пресетом', (id) => {
+  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: полное состояние — дефолты под пресетом', (id) => {
     const state = presetById(id)?.build();
     expect(state).toEqual(completeState(PRESET_STATES[id] ?? {}));
     // высоту и стенку пресеты не задают: берутся дефолтные
@@ -36,7 +43,7 @@ describe('встроенные пресеты', () => {
     expect(state?.wallMm).toBe(defaultState().wallMm);
   });
 
-  it.each(PRESETS.map((p) => [p.id] as const))('%s: строится валидный закрытый меш', (id) => {
+  it.each(Object.keys(PRESET_STATES).map((id) => [id] as const))('%s: строится валидный закрытый меш', (id) => {
     const params = stateToParams(PRESET_STATES[id] ?? {});
     params.nu = 48;
     params.nv = 48;

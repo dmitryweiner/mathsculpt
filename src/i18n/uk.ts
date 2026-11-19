@@ -40,6 +40,7 @@ export const uk: Record<Key, string> = {
   'stage.done': 'Готово',
 
   // --- presets ---
+  'preset.blank.name': 'Нова модель',
   'preset.classic-vase.name': 'Класична ваза',
   'preset.twisted-column.name': 'Кручена колона',
   'preset.faceted-tumbler.name': 'Гранчаста склянка',

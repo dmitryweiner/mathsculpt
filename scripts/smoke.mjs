@@ -144,6 +144,25 @@ await app.run(
       check(await page.locator('#redoBtn').isDisabled(), 'redo is still enabled at the newest step');
     });
 
+    // 📄 Новое: модель по умолчанию под именем «New model»; ↶ возвращает прежнюю
+    await step('📄 New opens the default model, one undo step', async (page) => {
+      await page.locator('#presetBtn').click();
+      await page.locator('#presetList .preset-row[data-ref="b:gyroid-sphere"] .preset-pick').click();
+      await page.waitForTimeout(300);
+      check((await page.locator('#shape_profile').inputValue()) === 'sphere', 'the gyroid sphere did not open');
+      await page.locator('#newBtn').click();
+      await page.waitForTimeout(300);
+      check(
+        (await page.locator('#presetBtn').textContent()).trim() === 'New model',
+        `the button says "${await page.locator('#presetBtn').textContent()}"`,
+      );
+      check((await page.locator('#shape_profile').inputValue()) === 'vase', 'not the default model');
+      await expectWatertight(page, 'new');
+      await page.locator('#undoBtn').click();
+      await page.waitForTimeout(300);
+      check((await page.locator('#shape_profile').inputValue()) === 'sphere', 'undo did not bring the sphere back');
+    });
+
     // 💾: пресет под именем из prompt — в «My presets», и после перезагрузки тоже
     await step('a saved preset survives a reload', async (page) => {
       page.once('dialog', (dialog) => dialog.accept('Smoke preset'));

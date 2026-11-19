@@ -42,6 +42,7 @@ export const en = {
   'stage.done': 'Done',
 
   // --- presets: the built-in ones by id (core/presets), the auto name of a saved one ---
+  'preset.blank.name': 'New model',
   'preset.classic-vase.name': 'Classic vase',
   'preset.twisted-column.name': 'Twisted column',
   'preset.faceted-tumbler.name': 'Faceted tumbler',

@@ -6,7 +6,7 @@
 // задают — открытый пресет берёт дефолтные.
 import type { BuiltInPreset } from 'maker-kit/core/presets';
 import type { AppState, PartialAppState } from './schema';
-import { completeState } from './schema';
+import { completeState, defaultState } from './schema';
 
 /** Что каждый пресет меняет относительно модели по умолчанию, в порядке списка. */
 export const PRESET_STATES: Readonly<Record<string, PartialAppState>> = {
@@ -143,10 +143,13 @@ export const PRESET_STATES: Readonly<Record<string, PartialAppState>> = {
   },
 };
 
-export const PRESETS: readonly BuiltInPreset<AppState>[] = Object.entries(PRESET_STATES).map(([id, partial]) => ({
-  id,
-  build: () => completeState(partial),
-}));
+/** 📄 Новое открывает этот пресет: модель по умолчанию, в списке пресетов её нет (правило кита). */
+export const BLANK_ID = 'blank';
+
+export const PRESETS: readonly BuiltInPreset<AppState>[] = [
+  { id: BLANK_ID, build: defaultState, listed: false },
+  ...Object.entries(PRESET_STATES).map(([id, partial]) => ({ id, build: () => completeState(partial) })),
+];
 
 export function presetById(id: string): BuiltInPreset<AppState> | undefined {
   return PRESETS.find((preset) => preset.id === id);
