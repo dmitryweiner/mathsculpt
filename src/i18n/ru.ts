@@ -19,6 +19,9 @@ export const ru: Record<Key, string> = {
   // --- export: the button, the status line, the verdicts of the app's own ---
   'export.button': 'Выгрузить STL',
   'export.blocked': 'Выгрузка остановлена: такой меш не напечатать.',
+  'export.progress': 'Собираю STL…',
+  'export.failed': 'Выгрузка не удалась: {error}',
+  'build.failed': 'Полная сборка не удалась: {error}',
   'status.line': '{k} тыс. треугольников · {closed} · {build} · {ms} мс',
   'status.watertight': 'замкнут ✓',
   'status.notWatertight': 'НЕ замкнут ✗',

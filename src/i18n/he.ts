@@ -19,6 +19,9 @@ export const he: Record<Key, string> = {
   // --- export: the button, the status line, the verdicts of the app's own ---
   'export.button': 'ייצוא STL',
   'export.blocked': 'הייצוא נעצר: רשת כזו לא תודפס.',
+  'export.progress': 'בונה STL…',
+  'export.failed': 'הייצוא נכשל: {error}',
+  'build.failed': 'הבנייה המלאה נכשלה: {error}',
   'status.line': '{k} אלף משולשים · {closed} · {build} · {ms} מ״ש',
   'status.watertight': 'אטום ✓',
   'status.notWatertight': 'לא אטום ✗',

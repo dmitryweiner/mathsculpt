@@ -1,7 +1,7 @@
 // Свесы для FDM-печати: доля поверхности, нависающей круче предела.
 // Своё у MathSculpt; проверка меша и сито экспорта — китовые (`maker-kit/3d/validate`).
 
-import type { SurfaceMesh } from './surface';
+import type { SurfaceMesh } from 'maker-kit/3d/mesh';
 
 /**
  * Доля площади, нависающей круче limitDeg от вертикали (плохо для FDM).

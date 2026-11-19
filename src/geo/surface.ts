@@ -4,6 +4,8 @@
 // Сетка замкнута по u (шов u=0/2π сшит индексами, не дублированием вершин):
 // вершина (i, j) → индекс j*nu + i, где i ∈ [0, nu), j ∈ [0, nv].
 
+import type { SurfaceMesh } from 'maker-kit/3d/mesh';
+
 export type CapMode = 'both' | 'bottom' | 'none';
 
 /**
@@ -21,13 +23,6 @@ export interface Grid {
 /** Число вершинных рядов сетки. */
 export function gridRows(grid: Grid): number {
   return grid.wrapV ? grid.nv : grid.nv + 1;
-}
-
-/** Готовый меш: позиции + нормали вершин + индексы треугольников. */
-export interface SurfaceMesh {
-  positions: Float32Array;
-  normals: Float32Array;
-  indices: Uint32Array;
 }
 
 export type GridFn = (u: number, v: number, out: Float64Array) => void;

@@ -2,7 +2,9 @@
 // деформеры → крышки → нормали. Чистая функция параметров — используется
 // главным потоком сейчас и Web Worker'ом в фазе 3.
 
-import type { CapMode, SurfaceMesh, Grid } from './surface';
+import type { SurfaceMesh } from 'maker-kit/3d/mesh';
+import { meshNormals } from 'maker-kit/3d/mesh';
+import type { CapMode, Grid } from './surface';
 import { assembleMesh, assembleTorusMesh, assembleHollowMesh } from './surface';
 import type { ShapeId } from './shapes';
 import { revolveGrid, shapeGrid, isShapeId, DEFAULT_SHAPE_PARAMS } from './shapes';
@@ -15,7 +17,7 @@ import {
   DEFAULT_FOURIER_PARAMS,
   fourierRadius,
 } from './profiles';
-import { gridNormals, meshNormals } from './normals';
+import { gridNormals } from './normals';
 import type { DisplaceEntry, DisplaceId, Params } from './displace';
 import { DISPLACE_IDS, DEFAULT_DISPLACE_PARAMS, applyDisplacements, makeDisplace, makeKernel } from './displace';
 import type { DeformId, ParamEval } from './deform';

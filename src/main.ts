@@ -12,7 +12,7 @@ import 'maker-kit/styles/kit.css';
 import './style.css';
 import type { MeshReport } from 'maker-kit/3d/validate';
 import { validateMesh } from 'maker-kit/3d/validate';
-import { stlFileName } from 'maker-kit/3d/stl';
+import { encodeSTL, stlFileName } from 'maker-kit/3d/stl';
 import { History } from 'maker-kit/core/history';
 import type { JobProgress } from 'maker-kit/core/progress';
 import type { PresetRef } from 'maker-kit/core/presets';
@@ -33,11 +33,11 @@ import { createModal } from 'maker-kit/ui/modal';
 import { renderPresetList } from 'maker-kit/ui/presetList';
 import { createProgress } from 'maker-kit/ui/progress';
 import { setupSheet } from 'maker-kit/ui/sheet';
+import { moduleWorker, WorkerClient } from 'maker-kit/worker/client';
 import type { BuildParams } from './geo/build';
 import { buildMesh, radiusFnFor } from './geo/build';
 import { overhangFraction } from './geo/overhang';
-import type { SurfaceMesh } from './geo/surface';
-import { encodeSTL } from './geo/stl';
+import { toMillimetres } from './geo/millimetres';
 import { createScene } from './render/scene';
 import { drawProfileGraph } from './ui/graph';
 import { renderPanel } from './ui/panel';
@@ -50,6 +50,7 @@ import type { AppState } from './state/schema';
 import { PRESETS, presetById } from './state/presets';
 import type { SculptPreset } from './state/userPresets';
 import { savePresetAs, userPresetsRecord } from './state/userPresets';
+import type { BuildJob, BuildResult } from './worker/protocol';
 import type { Key } from './i18n';
 import { LANGS, autoPresetPrefixes, hasKey, initLang, lang, onLangChange, setLang, t, tDynamic, tm, tr } from './i18n';
 
@@ -66,6 +67,8 @@ const messages = el('messages', HTMLUListElement);
 const storageNote = el('storageNote', HTMLDivElement);
 const canvas = el('view', HTMLCanvasElement);
 const graphCanvas = el('profileGraph', HTMLCanvasElement);
+/** 3D-вид кита; null без WebGL — приложение работает и без него */
+const scene = createScene(canvas);
 
 // язык: сохранённый выбор → языки браузера → английский
 initLang();
@@ -151,6 +154,8 @@ setupSheet({
   close: el('sheetClose', HTMLButtonElement),
   view: el('viewWrap', HTMLElement),
   narrow: matchMedia('(max-width: 1023px)'),
+  // вид ставит модель над поднятым листом
+  onInset: (px) => scene?.setInset(px),
 });
 
 // --- отмена: ↶ ↷ и Ctrl/⌘+Z на любой раскладке (китовые) ---
@@ -268,36 +273,24 @@ saveBtn.addEventListener('click', () => {
   refreshPresetButton();
 });
 
-// --- сборка: превью в главном потоке + полная сетка в worker ---
-const scene = createScene(canvas);
+// --- сборка: превью в главном потоке + полная сетка в воркере (очередь кита) ---
 const progress = createProgress(el('progressWrap', HTMLDivElement), { t: tr });
-let worker: Worker | null = null;
-/** снимает полосу прогресса с полной сборки, которую убили */
-let cancelFull: (() => void) | null = null;
+// Vite находит и собирает воркер только по `new Worker(new URL(…))` в коде приложения
+const client = new WorkerClient<BuildJob, BuildResult>(
+  moduleWorker(() => new Worker(new URL('./worker/build.worker.ts', import.meta.url), { type: 'module' })),
+  // одна дорожка: ждущая полная сборка вытесняется свежей, выгрузка (kept) — нет
+  { lane: () => 'model', kept: (job) => job.kind === 'export' },
+);
 let fullTimer: ReturnType<typeof setTimeout> | null = null;
-let lastFullMesh: SurfaceMesh | null = null;
-let fullDirty = true;
+/** номер последней заказанной полной сборки: результат прежней устарел */
+let fullSerial = 0;
+/** полная сборка показанного состояния, когда она готова */
+let lastFull: BuildResult | null = null;
 
-function killWorker(): void {
-  worker?.terminate();
-  worker = null;
-  cancelFull?.();
-  cancelFull = null;
-}
-
-function isRecord(u: unknown): u is Record<string, unknown> {
-  return typeof u === 'object' && u !== null;
-}
-
-function isMeshReport(u: unknown): u is MeshReport {
-  return isRecord(u) && typeof u.watertight === 'boolean' && typeof u.triangleCount === 'number';
-}
-
-/** Доля и этап сборки — на полосу: этап — ключ словаря `stage.<phase>`. */
-function stage(share: number, phase: string): JobProgress<Key> {
-  const key = `stage.${phase}`;
-  const done = { step: Math.round(Math.min(1, Math.max(0, share)) * 100), total: 100 };
-  return hasKey(key) ? { ...done, label: { code: key } } : done;
+/** Ход работы воркера — на полосу: этапы, что есть в словаре (`stage.<phase>`), с подписью. */
+function stage(p: JobProgress): JobProgress<Key> {
+  const code = p.label?.code;
+  return code !== undefined && hasKey(code) ? { step: p.step, total: p.total, label: { code } } : { step: p.step, total: p.total };
 }
 
 function messageLines(verdicts: readonly Verdict[]): { severity: Verdict['severity']; text: string; code: string }[] {
@@ -313,51 +306,36 @@ function showReport(report: MeshReport, overhang: number, buildMs: number, resol
   renderMessages(messages, messageLines(meshVerdicts(report, params, overhang)));
 }
 
+/** Сбой воркера — строкой в списке сообщений. */
+function failed(key: 'build.failed' | 'export.failed', error: unknown): void {
+  renderMessages(messages, [
+    { severity: 'bad', text: t(key, { error: error instanceof Error ? error.message : String(error) }), code: key },
+  ]);
+}
+
 function startFullBuild(): void {
-  killWorker();
-  const w = new Worker(new URL('./worker/build.ts', import.meta.url), { type: 'module' });
-  worker = w;
+  const serial = ++fullSerial;
   const resolution = fullResolution();
-  const full: BuildParams = { ...params, nu: resolution, nv: resolution };
-  void progress.track(
-    (onProgress) =>
-      new Promise<void>((resolve) => {
-        cancelFull = resolve;
-        w.addEventListener('message', (e: MessageEvent) => {
-          const msg: unknown = e.data;
-          if (!isRecord(msg)) return;
-          if (msg.type === 'progress' && typeof msg.t === 'number') {
-            onProgress(stage(msg.t, typeof msg.phase === 'string' ? msg.phase : ''));
-          } else if (msg.type === 'done') {
-            const { positions, normals, indices, report, overhang, buildMs } = msg;
-            if (
-              positions instanceof Float32Array &&
-              normals instanceof Float32Array &&
-              indices instanceof Uint32Array &&
-              isMeshReport(report) &&
-              typeof overhang === 'number' &&
-              typeof buildMs === 'number'
-            ) {
-              const mesh: SurfaceMesh = { positions, normals, indices };
-              lastFullMesh = mesh;
-              fullDirty = false;
-              scene.setMesh(mesh);
-              showReport(report, overhang, buildMs, resolution);
-            }
-            resolve();
-            killWorker();
-          }
-        });
-        w.postMessage(full);
-      }),
-  );
+  const job: BuildJob = { kind: 'full', state: history.state, resolution };
+  void progress
+    .track((onProgress) => client.run(job, (p) => onProgress(stage(p))))
+    .then(
+      (done) => {
+        // null: свежая задача вытеснила ждущую; другой номер — модель с тех пор изменилась
+        if (!done || serial !== fullSerial) return;
+        lastFull = done.result;
+        scene?.show(done.result.mesh);
+        showReport(done.result.report, done.result.overhang, done.ms, resolution);
+      },
+      (error: unknown) => failed('build.failed', error),
+    );
 }
 
 function scheduleFullBuild(): void {
-  fullDirty = true;
-  // параметры изменились: результат летящего воркера уже неактуален —
-  // убиваем сразу, иначе его done затрёт свежее превью старым мешем
-  killWorker();
+  // модель или детализация изменились: готовая полная сборка устарела, идущая —
+  // тоже. Идущую воркер доделает (кит не обрывает задачу), её результат отбросится.
+  lastFull = null;
+  fullSerial++;
   if (fullTimer) clearTimeout(fullTimer);
   fullTimer = setTimeout(() => {
     fullTimer = null;
@@ -365,32 +343,43 @@ function scheduleFullBuild(): void {
   }, 400);
 }
 
-/** Мгновенное превью: низкое разрешение в главном потоке. */
+/** Мгновенное превью: низкое разрешение в главном потоке, в миллиметрах. */
 function rebuildPreview(): void {
   const t0 = performance.now();
   const preview: BuildParams = { ...params, nu: PREVIEW_N, nv: PREVIEW_N };
-  const mesh = buildMesh(preview);
-  scene.setMesh(mesh);
+  const mesh = toMillimetres(buildMesh(preview), history.state.heightMm);
+  scene?.show(mesh);
   showReport(validateMesh(mesh), overhangFraction(mesh), performance.now() - t0, null);
   const prof = radiusFnFor(params);
   graphCanvas.hidden = !prof;
   if (prof) drawProfileGraph(graphCanvas, prof.radiusFn, prof.height);
 }
 
-// --- экспорт: сито кита; предупреждения уже в списке, вопроса нет ---
-exportBtn.addEventListener('click', () => {
+// --- экспорт: готовая полная сборка или задача выгрузки в воркере; сито кита ---
+async function exportStl(): Promise<void> {
+  const state = history.state;
   const resolution = fullResolution();
-  const mesh = fullDirty || !lastFullMesh ? buildMesh({ ...params, nu: resolution, nv: resolution }) : lastFullMesh;
-  const report = validateMesh(mesh);
-  const verdicts = meshVerdicts(report, params, overhangFraction(mesh));
+  const result =
+    lastFull ??
+    (
+      await progress.track((onProgress) => client.run({ kind: 'export', state, resolution }, (p) => onProgress(stage(p))), {
+        label: 'export.progress',
+        delayMs: 0,
+      })
+    )?.result;
+  if (!result) return;
+  const verdicts = meshVerdicts(result.report, buildParamsOf(state), result.overhang);
   if (verdicts.some((verdict) => verdict.severity === 'bad')) {
     renderMessages(messages, [{ severity: 'bad', text: t('export.blocked'), code: 'export.blocked' }, ...messageLines(verdicts)]);
     return;
   }
-  const zExtent = report.bbox.max[2] - report.bbox.min[2];
-  const name = currentName() || params.profile;
-  // имя файла сохраняет буквы любого письма: «Классическая ваза» → классическая-ваза.stl
-  download(stlFileName(name, 'mathsculpt'), encodeSTL(mesh, { scale: history.state.heightMm / zExtent, name }), 'model/stl');
+  const name = currentName() || state.profile;
+  // меш уже в миллиметрах; имя файла сохраняет буквы любого письма: «Классическая ваза» → классическая-ваза.stl
+  download(stlFileName(name, 'mathsculpt'), encodeSTL(result.mesh, { brand: 'MathSculpt', name }), 'model/stl');
+}
+
+exportBtn.addEventListener('click', () => {
+  exportStl().catch((error: unknown) => failed('export.failed', error));
 });
 
 // --- язык: 🌐 в шапке; смена перерисовывает всё, где есть слова ---
