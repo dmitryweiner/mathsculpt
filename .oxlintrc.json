@@ -30,6 +30,8 @@
     {
       "files": ["tests/**"],
       "rules": {
+        // Vitest's `expect(value, message)` names the failing case.
+        "vitest/valid-expect": ["error", { "maxArgs": 2 }],
         // A test walks profiles, presets and cards and checks what applies to each.
         "vitest/no-conditional-expect": "off"
       }
