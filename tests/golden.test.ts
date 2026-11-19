@@ -38,10 +38,13 @@ describe('golden-геометрия', () => {
   if (process.env.UPDATE_GOLDEN) {
     for (const id of PROFILE_IDS) golden[id] = snapshot(id);
     writeFileSync(GOLDEN_PATH, JSON.stringify(golden, null, 1));
-  } else {
-    expect(existsSync(GOLDEN_PATH), `нет эталона ${GOLDEN_PATH}; сгенерируйте: UPDATE_GOLDEN=1 npm test`).toBe(true);
+  } else if (existsSync(GOLDEN_PATH)) {
     Object.assign(golden, JSON.parse(readFileSync(GOLDEN_PATH, 'utf8')));
   }
+
+  it('эталон есть', () => {
+    expect(existsSync(GOLDEN_PATH), `нет эталона ${GOLDEN_PATH}; сгенерируйте: UPDATE_GOLDEN=1 npm test`).toBe(true);
+  });
 
   it.each(PROFILE_IDS.map((id) => [id] as const))('%s совпадает с эталоном', (id) => {
     const ref = golden[id];

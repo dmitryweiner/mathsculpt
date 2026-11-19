@@ -8,8 +8,19 @@ import { gridRows } from './surface';
 import type { Params } from './displace';
 
 export const DEFORM_IDS = [
-  'twist', 'taper', 'symmetry', 'smooth', 'quantize',
-  'bulge', 'bend', 'shear', 'axial', 'elliptic', 'flare', 'corrugate', 'taubin',
+  'twist',
+  'taper',
+  'symmetry',
+  'smooth',
+  'quantize',
+  'bulge',
+  'bend',
+  'shear',
+  'axial',
+  'elliptic',
+  'flare',
+  'corrugate',
+  'taubin',
 ] as const;
 export type DeformId = (typeof DEFORM_IDS)[number];
 
@@ -97,7 +108,9 @@ function symmetry(grid: Grid, p: Params, evalAt?: ParamEval): void {
     const base = j * nu * 3;
     for (let t = 0; t < nu * 3; t++) ring[t] = positions[base + t];
     for (let i = 0; i < nu; i++) {
-      let ax = 0, ay = 0, az = 0;
+      let ax = 0,
+        ay = 0,
+        az = 0;
       for (let m = 0; m < k; m++) {
         // точка кольца на угле u + m·2π/k, повёрнутая назад на −m·2π/k
         const col = i + (m * nu) / k;
@@ -185,66 +198,78 @@ function bulge(grid: Grid, p: Params, evalAt?: ParamEval): void {
   scaleRings(grid, (u, v, x, y, z) => {
     const pp = evalAt ? evalAt(u, v, x, y, z) : p;
     const width = Math.max(0.02, num(pp, 'width', 0.2));
-    return Math.max(0.1, 1 + num(pp, 'amount', 0.25) *
-      Math.exp(-Math.pow((v - num(pp, 'center', 0.5)) / width, 2)));
+    return Math.max(0.1, 1 + num(pp, 'amount', 0.25) * Math.exp(-Math.pow((v - num(pp, 'center', 0.5)) / width, 2)));
   });
 }
 
 function bend(grid: Grid, p: Params, evalAt?: ParamEval): void {
   const { nu, nv, positions } = grid;
   const rows = gridRows(grid);
-  let zMin = Infinity, zMax = -Infinity;
+  let zMin = Infinity,
+    zMax = -Infinity;
   for (let i = 2; i < positions.length; i += 3) {
     zMin = Math.min(zMin, positions[i]);
     zMax = Math.max(zMax, positions[i]);
   }
   const height = zMax - zMin;
-  for (let j = 0; j < rows; j++) for (let i = 0; i < nu; i++) {
-    const k = (j * nu + i) * 3;
-    const v = j / nv;
-    const u = (2 * Math.PI * i) / nu;
-    const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
-    positions[k] += height * num(pp, 'amount', 0.2) * Math.pow(v, Math.max(0.2, num(pp, 'power', 1)));
-  }
+  for (let j = 0; j < rows; j++)
+    for (let i = 0; i < nu; i++) {
+      const k = (j * nu + i) * 3;
+      const v = j / nv;
+      const u = (2 * Math.PI * i) / nu;
+      const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
+      positions[k] += height * num(pp, 'amount', 0.2) * Math.pow(v, Math.max(0.2, num(pp, 'power', 1)));
+    }
 }
 
 function shear(grid: Grid, p: Params, evalAt?: ParamEval): void {
   const { nu, nv, positions } = grid;
   const rows = gridRows(grid);
-  for (let j = 0; j < rows; j++) for (let i = 0; i < nu; i++) {
-    const k = (j * nu + i) * 3, v = j / nv, u = (2 * Math.PI * i) / nu;
-    const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
-    positions[k] += num(pp, 'x', 0.15) * v;
-    positions[k + 1] += num(pp, 'y', 0) * v;
-  }
+  for (let j = 0; j < rows; j++)
+    for (let i = 0; i < nu; i++) {
+      const k = (j * nu + i) * 3,
+        v = j / nv,
+        u = (2 * Math.PI * i) / nu;
+      const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
+      positions[k] += num(pp, 'x', 0.15) * v;
+      positions[k + 1] += num(pp, 'y', 0) * v;
+    }
 }
 
 function axial(grid: Grid, p: Params, evalAt?: ParamEval): void {
   const { nu, nv, positions } = grid;
   const rows = gridRows(grid);
-  for (let j = 0; j < rows; j++) for (let i = 0; i < nu; i++) {
-    const k = (j * nu + i) * 3, v = j / nv, u = (2 * Math.PI * i) / nu;
-    const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
-    const angle = 2 * Math.PI * num(pp, 'freq', 2) * v + num(pp, 'phase', 0);
-    const amp = num(pp, 'amp', 0.08);
-    positions[k] += amp * Math.cos(angle);
-    positions[k + 1] += amp * Math.sin(angle);
-  }
+  for (let j = 0; j < rows; j++)
+    for (let i = 0; i < nu; i++) {
+      const k = (j * nu + i) * 3,
+        v = j / nv,
+        u = (2 * Math.PI * i) / nu;
+      const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
+      const angle = 2 * Math.PI * num(pp, 'freq', 2) * v + num(pp, 'phase', 0);
+      const amp = num(pp, 'amp', 0.08);
+      positions[k] += amp * Math.cos(angle);
+      positions[k + 1] += amp * Math.sin(angle);
+    }
 }
 
 function elliptic(grid: Grid, p: Params, evalAt?: ParamEval): void {
   const { nu, nv, positions } = grid;
   const rows = gridRows(grid);
-  for (let j = 0; j < rows; j++) for (let i = 0; i < nu; i++) {
-    const k = (j * nu + i) * 3, v = j / nv, u = (2 * Math.PI * i) / nu;
-    const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
-    const angle = num(pp, 'phase', 0), c = Math.cos(angle), s = Math.sin(angle);
-    const x = positions[k] * c + positions[k + 1] * s;
-    const y = -positions[k] * s + positions[k + 1] * c;
-    const ratio = Math.max(0.2, num(pp, 'ratio', 1.3));
-    positions[k] = (x * ratio) * c - (y / ratio) * s;
-    positions[k + 1] = (x * ratio) * s + (y / ratio) * c;
-  }
+  for (let j = 0; j < rows; j++)
+    for (let i = 0; i < nu; i++) {
+      const k = (j * nu + i) * 3,
+        v = j / nv,
+        u = (2 * Math.PI * i) / nu;
+      const pp = evalAt ? evalAt(u, v, positions[k], positions[k + 1], positions[k + 2]) : p;
+      const angle = num(pp, 'phase', 0),
+        c = Math.cos(angle),
+        s = Math.sin(angle);
+      const x = positions[k] * c + positions[k + 1] * s;
+      const y = -positions[k] * s + positions[k + 1] * c;
+      const ratio = Math.max(0.2, num(pp, 'ratio', 1.3));
+      positions[k] = x * ratio * c - (y / ratio) * s;
+      positions[k + 1] = x * ratio * s + (y / ratio) * c;
+    }
 }
 
 function flare(grid: Grid, p: Params, evalAt?: ParamEval): void {
@@ -259,8 +284,7 @@ function flare(grid: Grid, p: Params, evalAt?: ParamEval): void {
 function corrugate(grid: Grid, p: Params, evalAt?: ParamEval): void {
   scaleRings(grid, (u, v, x, y, z) => {
     const pp = evalAt ? evalAt(u, v, x, y, z) : p;
-    return Math.max(0.1, 1 + num(pp, 'amp', 0.05) *
-      Math.cos(num(pp, 'folds', 12) * u + num(pp, 'phase', 0)));
+    return Math.max(0.1, 1 + num(pp, 'amp', 0.05) * Math.cos(num(pp, 'folds', 12) * u + num(pp, 'phase', 0)));
   });
 }
 
@@ -273,10 +297,7 @@ function laplacePass(grid: Grid, strength: number): void {
     const jDn = grid.wrapV ? (j - 1 + rows) % rows : Math.max(0, j - 1);
     for (let i = 0; i < nu; i++) {
       const k = (j * nu + i) * 3;
-      const neighbors = [
-        (j * nu + (i - 1 + nu) % nu) * 3, (j * nu + (i + 1) % nu) * 3,
-        (jUp * nu + i) * 3, (jDn * nu + i) * 3,
-      ];
+      const neighbors = [(j * nu + ((i - 1 + nu) % nu)) * 3, (j * nu + ((i + 1) % nu)) * 3, (jUp * nu + i) * 3, (jDn * nu + i) * 3];
       for (let c = 0; c < 3; c++) {
         let avg = 0;
         for (const n of neighbors) avg += src[n + c];
@@ -298,18 +319,31 @@ function taubin(grid: Grid, p: Params): void {
 
 export function applyDeformer(id: DeformId, grid: Grid, p: Params, evalAt?: ParamEval): void {
   switch (id) {
-    case 'twist': return twist(grid, p, evalAt);
-    case 'taper': return taper(grid, p, evalAt);
-    case 'symmetry': return symmetry(grid, p, evalAt);
-    case 'smooth': return smooth(grid, p);
-    case 'quantize': return quantize(grid, p);
-    case 'bulge': return bulge(grid, p, evalAt);
-    case 'bend': return bend(grid, p, evalAt);
-    case 'shear': return shear(grid, p, evalAt);
-    case 'axial': return axial(grid, p, evalAt);
-    case 'elliptic': return elliptic(grid, p, evalAt);
-    case 'flare': return flare(grid, p, evalAt);
-    case 'corrugate': return corrugate(grid, p, evalAt);
-    case 'taubin': return taubin(grid, p);
+    case 'twist':
+      return twist(grid, p, evalAt);
+    case 'taper':
+      return taper(grid, p, evalAt);
+    case 'symmetry':
+      return symmetry(grid, p, evalAt);
+    case 'smooth':
+      return smooth(grid, p);
+    case 'quantize':
+      return quantize(grid, p);
+    case 'bulge':
+      return bulge(grid, p, evalAt);
+    case 'bend':
+      return bend(grid, p, evalAt);
+    case 'shear':
+      return shear(grid, p, evalAt);
+    case 'axial':
+      return axial(grid, p, evalAt);
+    case 'elliptic':
+      return elliptic(grid, p, evalAt);
+    case 'flare':
+      return flare(grid, p, evalAt);
+    case 'corrugate':
+      return corrugate(grid, p, evalAt);
+    case 'taubin':
+      return taubin(grid, p);
   }
 }

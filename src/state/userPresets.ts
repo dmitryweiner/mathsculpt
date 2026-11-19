@@ -9,9 +9,7 @@ export interface UserPreset {
 }
 
 function isUserPreset(u: unknown): u is UserPreset {
-  return typeof u === 'object' && u !== null
-    && typeof Reflect.get(u, 'name') === 'string'
-    && typeof Reflect.get(u, 'state') === 'object';
+  return typeof u === 'object' && u !== null && typeof Reflect.get(u, 'name') === 'string' && typeof Reflect.get(u, 'state') === 'object';
 }
 
 export function loadUserPresets(): UserPreset[] {

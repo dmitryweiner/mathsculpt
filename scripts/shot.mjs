@@ -4,15 +4,19 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 
-const BASE = 'http://localhost:5173';
+const BASE = 'http://localhost:5287';
 
 async function serverUp() {
-  try { return (await fetch(BASE)).ok; } catch { return false; }
+  try {
+    return (await fetch(BASE)).ok;
+  } catch {
+    return false;
+  }
 }
 
 let devProc = null;
 if (!(await serverUp())) {
-  devProc = spawn('npx', ['vite', '--port', '5173', '--strictPort'], { stdio: 'ignore' });
+  devProc = spawn('npx', ['vite', '--port', '5287', '--strictPort'], { stdio: 'ignore' });
   for (let i = 0; i < 30 && !(await serverUp()); i++) await new Promise((r) => setTimeout(r, 1000));
 }
 

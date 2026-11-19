@@ -1,7 +1,12 @@
 // Профили: непрерывность, положительность, прохождение через контрольные точки.
 import {
-  PROFILES, profileById, profileRadius, isProfileId,
-  profileShapeFactor, shapedProfileRadius, DEFAULT_PROFILE_SHAPE,
+  PROFILES,
+  profileById,
+  profileRadius,
+  isProfileId,
+  profileShapeFactor,
+  shapedProfileRadius,
+  DEFAULT_PROFILE_SHAPE,
 } from '../src/geo/profiles';
 import { buildMesh, defaultParams } from '../src/geo/build';
 import { validateMesh } from '../src/geo/validate';
@@ -34,7 +39,7 @@ describe('профили-пресеты', () => {
   it('isProfileId', () => {
     expect(isProfileId('vase')).toBe(true);
     expect(isProfileId('nope')).toBe(false);
-    expect(() => profileById('nope')).toThrow();
+    expect(() => profileById('nope')).toThrow('unknown profile: nope');
   });
 });
 

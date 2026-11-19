@@ -51,7 +51,11 @@ describe('сферические гармоники', () => {
   });
 
   it('Y00·√4π = 1 всюду', () => {
-    for (const [th, ph] of [[0.1, 0], [1.5, 2], [3, 5]]) {
+    for (const [th, ph] of [
+      [0.1, 0],
+      [1.5, 2],
+      [3, 5],
+    ]) {
       expect(sphericalHarmonic(0, 0, th, ph)).toBeCloseTo(1, 9);
     }
   });
@@ -71,7 +75,9 @@ describe('simplex fBm-шум', () => {
     const a = simplex3(42);
     const b = simplex3(42);
     for (let i = 0; i < 50; i++) {
-      const x = i * 0.37, y = i * 0.91, z = i * 0.13;
+      const x = i * 0.37,
+        y = i * 0.91,
+        z = i * 0.13;
       expect(a(x, y, z)).toBe(b(x, y, z));
     }
   });
@@ -88,7 +94,8 @@ describe('simplex fBm-шум', () => {
 
   it('выход ограничен [−1.2, 1.2] и не константен', () => {
     const f = fbm3(simplex3(7), 4);
-    let min = Infinity, max = -Infinity;
+    let min = Infinity,
+      max = -Infinity;
     for (let i = 0; i < 2000; i++) {
       const v = f(i * 0.11, (i % 13) * 0.29, (i % 7) * 0.53);
       min = Math.min(min, v);
@@ -159,9 +166,7 @@ describe('applyDisplacements', () => {
   it('смещению передаётся позиция точки базовой поверхности', () => {
     const g = unitCylinder();
     const seen: number[][] = [];
-    applyDisplacements(g, gridNormals(g), [
-      { fn: (_u, _v, px, py, pz) => (seen.push([px, py, pz]), 0), weight: 1 },
-    ]);
+    applyDisplacements(g, gridNormals(g), [{ fn: (_u, _v, px, py, pz) => (seen.push([px, py, pz]), 0), weight: 1 }]);
     expect(seen.length).toBe(16 * 5);
     const [px, py, pz] = seen[0];
     expect(px).toBeCloseTo(1, 5);

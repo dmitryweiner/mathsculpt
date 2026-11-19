@@ -19,9 +19,23 @@ export interface DisplaceEntry {
 }
 
 export const DISPLACE_IDS = [
-  'ripples', 'lissajous', 'harmonics', 'noise', 'waves', 'gyroid', 'bytebeat',
-  'gaussian', 'phyllotaxis', 'cellular', 'warp', 'tpms', 'logistic',
-  'superformula', 'knurl', 'polygon', 'star',
+  'ripples',
+  'lissajous',
+  'harmonics',
+  'noise',
+  'waves',
+  'gyroid',
+  'bytebeat',
+  'gaussian',
+  'phyllotaxis',
+  'cellular',
+  'warp',
+  'tpms',
+  'logistic',
+  'superformula',
+  'knurl',
+  'polygon',
+  'star',
 ] as const;
 export type DisplaceId = (typeof DISPLACE_IDS)[number];
 
@@ -78,8 +92,7 @@ function lissajousKernel(): DisplaceKernel {
 function harmonicsKernel(staticP: Params): DisplaceKernel {
   const l = num(staticP, 'l', 5);
   const m = num(staticP, 'm', 3);
-  return (u, v, _px, _py, _pz, p) =>
-    num(p, 'amp', 0.05) * sphericalHarmonic(l, m, Math.PI * (1 - v), u, num(p, 'phase', 0));
+  return (u, v, _px, _py, _pz, p) => num(p, 'amp', 0.05) * sphericalHarmonic(l, m, Math.PI * (1 - v), u, num(p, 'phase', 0));
 }
 
 /** fBm simplex-шум по 3D-точке поверхности — камень/керамика ручной лепки. */
@@ -105,8 +118,7 @@ function wavesKernel(staticP: Params): DisplaceKernel {
     return 4 * Math.abs(t - 0.5) - 1;
   };
   return (u, v, _px, _py, _pz, p) =>
-    num(p, 'amp', 0.02) *
-    wave((num(p, 'freqU', 8) * u) / (2 * Math.PI) + num(p, 'freqV', 0) * v + num(p, 'phase', 0) / (2 * Math.PI));
+    num(p, 'amp', 0.02) * wave((num(p, 'freqU', 8) * u) / (2 * Math.PI) + num(p, 'freqV', 0) * v + num(p, 'phase', 0) / (2 * Math.PI));
 }
 
 /** Гироид-узор в точке поверхности — тканый TPMS-рельеф без решётки. */
@@ -130,10 +142,18 @@ function bytebeatKernel(staticP: Params): DisplaceKernel {
     const iy = Math.floor(v * cells);
     let b: number;
     switch (recipe) {
-      case 2: b = ((ix ^ iy) % 9) / 8; break; // munching squares
-      case 3: b = (((ix * iy) >> 1) & 7) / 7; break;
-      case 4: b = ((ix + iy * 3) & (ix >> 1) & 15) / 15; break;
-      default: b = ((ix | iy) & 15) / 15; break;
+      case 2:
+        b = ((ix ^ iy) % 9) / 8;
+        break; // munching squares
+      case 3:
+        b = (((ix * iy) >> 1) & 7) / 7;
+        break;
+      case 4:
+        b = ((ix + iy * 3) & (ix >> 1) & 15) / 15;
+        break;
+      default:
+        b = ((ix | iy) & 15) / 15;
+        break;
     }
     return num(p, 'amp', 0.02) * (2 * b - 1);
   };
@@ -143,13 +163,13 @@ function gaussianKernel(): DisplaceKernel {
   return (u, v, _px, _py, _pz, p) => {
     const width = Math.max(0.01, num(p, 'width', 0.15));
     const envelope = Math.exp(-Math.pow((v - num(p, 'center', 0.55)) / width, 2));
-    return num(p, 'amp', 0.04) * envelope *
-      Math.cos(num(p, 'lobes', 6) * u + num(p, 'phase', 0));
+    return num(p, 'amp', 0.04) * envelope * Math.cos(num(p, 'lobes', 6) * u + num(p, 'phase', 0));
   };
 }
 
 function phyllotaxisKernel(): DisplaceKernel {
-  return (u, v, _px, _py, _pz, p) => num(p, 'amp', 0.025) *
+  return (u, v, _px, _py, _pz, p) =>
+    num(p, 'amp', 0.025) *
     Math.cos(num(p, 'turns', 13) * u - 2 * Math.PI * num(p, 'slope', 8) * v + num(p, 'phase', 0)) *
     Math.sin(Math.PI * Math.min(1, Math.max(0, v)));
 }
@@ -163,17 +183,29 @@ function cellularKernel(staticP: Params): DisplaceKernel {
   const seed = Math.round(num(staticP, 'seed', 17));
   return (_u, _v, px, py, pz, p) => {
     const scale = num(p, 'scale', 8);
-    const x = px * scale, y = py * scale, z = pz * scale;
-    const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
-    let f1 = Infinity, f2 = Infinity;
-    for (let dz = -1; dz <= 1; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      const cx = ix + dx, cy = iy + dy, cz = iz + dz;
-      const ox = hashCell(cx, cy, cz, seed);
-      const oy = hashCell(cx, cy, cz, seed + 11);
-      const oz = hashCell(cx, cy, cz, seed + 29);
-      const d = Math.hypot(cx + ox - x, cy + oy - y, cz + oz - z);
-      if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
-    }
+    const x = px * scale,
+      y = py * scale,
+      z = pz * scale;
+    const ix = Math.floor(x),
+      iy = Math.floor(y),
+      iz = Math.floor(z);
+    let f1 = Infinity,
+      f2 = Infinity;
+    for (let dz = -1; dz <= 1; dz++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const cx = ix + dx,
+            cy = iy + dy,
+            cz = iz + dz;
+          const ox = hashCell(cx, cy, cz, seed);
+          const oy = hashCell(cx, cy, cz, seed + 11);
+          const oz = hashCell(cx, cy, cz, seed + 29);
+          const d = Math.hypot(cx + ox - x, cy + oy - y, cz + oz - z);
+          if (d < f1) {
+            f2 = f1;
+            f1 = d;
+          } else if (d < f2) f2 = d;
+        }
     const edge = Math.min(1, Math.max(0, (f2 - f1) * num(p, 'sharpness', 2)));
     return num(p, 'amp', 0.025) * (2 * edge - 1);
   };
@@ -195,17 +227,19 @@ function tpmsKernel(staticP: Params): DisplaceKernel {
   const family = Math.round(num(staticP, 'family', 1));
   return (_u, _v, px, py, pz, p) => {
     const s = num(p, 'scale', 12);
-    const x = px * s, y = py * s, z = pz * s;
+    const x = px * s,
+      y = py * s,
+      z = pz * s;
     let g: number;
     if (family === 2) g = Math.cos(x) + Math.cos(y) + Math.cos(z);
     else if (family === 3) {
-      g = Math.sin(x) * Math.sin(y) * Math.sin(z) +
+      g =
+        Math.sin(x) * Math.sin(y) * Math.sin(z) +
         Math.sin(x) * Math.cos(y) * Math.cos(z) +
         Math.cos(x) * Math.sin(y) * Math.cos(z) +
         Math.cos(x) * Math.cos(y) * Math.sin(z);
     } else if (family === 4) {
-      g = 3 * (Math.cos(x) + Math.cos(y) + Math.cos(z)) +
-        4 * Math.cos(x) * Math.cos(y) * Math.cos(z);
+      g = 3 * (Math.cos(x) + Math.cos(y) + Math.cos(z)) + 4 * Math.cos(x) * Math.cos(y) * Math.cos(z);
     } else {
       g = Math.sin(x) * Math.cos(y) + Math.sin(y) * Math.cos(z) + Math.sin(z) * Math.cos(x);
     }
@@ -230,8 +264,8 @@ function logisticKernel(staticP: Params): DisplaceKernel {
 function superformulaKernel(): DisplaceKernel {
   return (u, _v, _px, _py, _pz, p) => {
     const n1 = Math.max(0.1, num(p, 'n1', 1));
-    const a = Math.pow(Math.abs(Math.cos(num(p, 'm', 6) * u / 4)), num(p, 'n2', 7));
-    const b = Math.pow(Math.abs(Math.sin(num(p, 'm', 6) * u / 4)), num(p, 'n3', 8));
+    const a = Math.pow(Math.abs(Math.cos((num(p, 'm', 6) * u) / 4)), num(p, 'n2', 7));
+    const b = Math.pow(Math.abs(Math.sin((num(p, 'm', 6) * u) / 4)), num(p, 'n3', 8));
     const r = Math.pow(Math.max(1e-9, a + b), -1 / n1);
     return num(p, 'amp', 0.04) * num(p, 'mix', 1) * Math.max(-1, Math.min(1, r - 1));
   };
@@ -249,7 +283,7 @@ function knurlKernel(): DisplaceKernel {
 function polygonKernel(): DisplaceKernel {
   return (u, _v, _px, _py, _pz, p) => {
     const sides = Math.max(3, Math.round(num(p, 'sides', 6)));
-    const local = ((u + num(p, 'phase', 0) + Math.PI / sides) % (2 * Math.PI / sides)) - Math.PI / sides;
+    const local = ((u + num(p, 'phase', 0) + Math.PI / sides) % ((2 * Math.PI) / sides)) - Math.PI / sides;
     const exact = Math.cos(Math.PI / sides) / Math.cos(local);
     return num(p, 'amp', 0.04) * num(p, 'roundness', 0.8) * (exact - 1);
   };
@@ -268,23 +302,40 @@ function starKernel(): DisplaceKernel {
 
 export function makeKernel(id: DisplaceId, staticParams: Params): DisplaceKernel {
   switch (id) {
-    case 'ripples': return ripplesKernel();
-    case 'lissajous': return lissajousKernel();
-    case 'harmonics': return harmonicsKernel(staticParams);
-    case 'noise': return noiseKernel(staticParams);
-    case 'waves': return wavesKernel(staticParams);
-    case 'gyroid': return gyroidKernel();
-    case 'bytebeat': return bytebeatKernel(staticParams);
-    case 'gaussian': return gaussianKernel();
-    case 'phyllotaxis': return phyllotaxisKernel();
-    case 'cellular': return cellularKernel(staticParams);
-    case 'warp': return warpKernel(staticParams);
-    case 'tpms': return tpmsKernel(staticParams);
-    case 'logistic': return logisticKernel(staticParams);
-    case 'superformula': return superformulaKernel();
-    case 'knurl': return knurlKernel();
-    case 'polygon': return polygonKernel();
-    case 'star': return starKernel();
+    case 'ripples':
+      return ripplesKernel();
+    case 'lissajous':
+      return lissajousKernel();
+    case 'harmonics':
+      return harmonicsKernel(staticParams);
+    case 'noise':
+      return noiseKernel(staticParams);
+    case 'waves':
+      return wavesKernel(staticParams);
+    case 'gyroid':
+      return gyroidKernel();
+    case 'bytebeat':
+      return bytebeatKernel(staticParams);
+    case 'gaussian':
+      return gaussianKernel();
+    case 'phyllotaxis':
+      return phyllotaxisKernel();
+    case 'cellular':
+      return cellularKernel(staticParams);
+    case 'warp':
+      return warpKernel(staticParams);
+    case 'tpms':
+      return tpmsKernel(staticParams);
+    case 'logistic':
+      return logisticKernel(staticParams);
+    case 'superformula':
+      return superformulaKernel();
+    case 'knurl':
+      return knurlKernel();
+    case 'polygon':
+      return polygonKernel();
+    case 'star':
+      return starKernel();
   }
 }
 

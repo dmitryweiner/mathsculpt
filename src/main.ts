@@ -379,9 +379,7 @@ function showReport(report: MeshReport, overhang: number, buildMs: number, full:
   // полый сосуд (open top + стенка) — это уже watertight-солид, а не оболочка
   const hollow = params.caps === 'bottom' && params.wall > 0;
   const shouldClose = params.caps === 'both' || hollow;
-  const closed = shouldClose
-    ? (report.watertight ? 'watertight ✓' : 'NOT watertight ✗')
-    : 'open top (zero-wall shell)';
+  const closed = shouldClose ? (report.watertight ? 'watertight ✓' : 'NOT watertight ✗') : 'open top (zero-wall shell)';
   const tag = full ? `full ${resolutionSel.value}×${resolutionSel.value}` : 'preview';
   status.textContent = `${kTris}k triangles · ${closed} · ${tag} · ${buildMs.toFixed(0)} ms`;
   const out: string[] = [];
@@ -511,22 +509,16 @@ resolutionSel.addEventListener('input', scheduleFullBuild);
 
 // --- экспорт ---
 exportBtn.addEventListener('click', () => {
-  const mesh = fullDirty || !lastFullMesh
-    ? buildMesh({ ...params, nu: fullResolution(), nv: fullResolution() })
-    : lastFullMesh;
+  const mesh = fullDirty || !lastFullMesh ? buildMesh({ ...params, nu: fullResolution(), nv: fullResolution() }) : lastFullMesh;
   const report = validateMesh(mesh);
-  const shouldBeClosed = params.caps === 'both' || (
-    params.caps === 'bottom' && params.wall > 0
-  );
+  const shouldBeClosed = params.caps === 'both' || (params.caps === 'bottom' && params.wall > 0);
   const assessment = assessExport(report, shouldBeClosed);
   if (assessment.blocking.length > 0) {
     warnings.textContent = `Export blocked:\n${assessment.blocking.map((issue) => `• ${issue}`).join('\n')}`;
     return;
   }
-  if (
-    assessment.warnings.length > 0 &&
-    !window.confirm(`The mesh has warnings:\n\n${assessment.warnings.join('\n')}\n\nExport anyway?`)
-  ) return;
+  if (assessment.warnings.length > 0 && !window.confirm(`The mesh has warnings:\n\n${assessment.warnings.join('\n')}\n\nExport anyway?`))
+    return;
   const zExtent = report.bbox.max[2] - report.bbox.min[2];
   const targetMm = readHeightMm();
   const name = presetName || params.profile;

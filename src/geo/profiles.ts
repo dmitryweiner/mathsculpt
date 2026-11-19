@@ -16,12 +16,7 @@ export interface ProfileDef {
   points: ProfilePoint[];
 }
 
-function sampledProfile(
-  id: string,
-  label: string,
-  height: number,
-  radius: (t: number) => number,
-): ProfileDef {
+function sampledProfile(id: string, label: string, height: number, radius: (t: number) => number): ProfileDef {
   const points: ProfilePoint[] = [];
   for (let i = 0; i <= 16; i++) {
     const t = i / 16;
@@ -101,20 +96,20 @@ export const PROFILES: ProfileDef[] = [
   },
   sampledProfile('bezier', 'Bezier curve', 1, (t) => {
     const s = 1 - t;
-    return s * s * s * 0.2 + 3 * s * s * t * 0.42 +
-      3 * s * t * t * 0.12 + t * t * t * 0.24;
+    return s * s * s * 0.2 + 3 * s * s * t * 0.42 + 3 * s * t * t * 0.12 + t * t * t * 0.24;
   }),
-  sampledProfile('gaussian-profile', 'Gaussian mixture', 1, (t) =>
-    0.16 + 0.28 * Math.exp(-Math.pow((t - 0.38) / 0.24, 2)) +
-    0.08 * Math.exp(-Math.pow((t - 0.9) / 0.09, 2))),
+  sampledProfile(
+    'gaussian-profile',
+    'Gaussian mixture',
+    1,
+    (t) => 0.16 + 0.28 * Math.exp(-Math.pow((t - 0.38) / 0.24, 2)) + 0.08 * Math.exp(-Math.pow((t - 0.9) / 0.09, 2)),
+  ),
   sampledProfile('superellipse-profile', 'Superellipse vessel', 1, (t) => {
     const y = 2 * t - 1;
     return 0.1 + 0.36 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(y), 3)), 1 / 3);
   }),
-  sampledProfile('catenary', 'Catenary', 1, (t) =>
-    0.16 + 0.15 * (Math.cosh(2.4 * (t - 0.5)) - 1)),
-  sampledProfile('tractrix', 'Tractrix', 1.05, (t) =>
-    0.1 + 0.34 * Math.sqrt(Math.max(0, 1 - Math.pow(0.92 * t, 2)))),
+  sampledProfile('catenary', 'Catenary', 1, (t) => 0.16 + 0.15 * (Math.cosh(2.4 * (t - 0.5)) - 1)),
+  sampledProfile('tractrix', 'Tractrix', 1.05, (t) => 0.1 + 0.34 * Math.sqrt(Math.max(0, 1 - Math.pow(0.92 * t, 2)))),
   sampledProfile('stem-bowl', 'Stem and bowl', 1.1, (t) => {
     const stem = 0.07 + 0.18 * Math.exp(-Math.pow(t / 0.12, 2));
     const bowl = 0.29 / (1 + Math.exp(-18 * (t - 0.58)));
@@ -153,7 +148,13 @@ export const FOURIER_PROFILE_ID = 'fourier';
 export const FOURIER_HEIGHT = 1.0;
 
 export const DEFAULT_FOURIER_PARAMS: Record<string, number> = {
-  r0: 0.3, a1: 0.12, phi1: 0, a2: 0.06, phi2: 0, a3: 0, phi3: 0,
+  r0: 0.3,
+  a1: 0.12,
+  phi1: 0,
+  a2: 0.06,
+  phi2: 0,
+  a3: 0,
+  phi3: 0,
 };
 
 export function fourierRadius(p: Record<string, number>, t: number): number {
@@ -213,10 +214,6 @@ export function profileRadius(def: ProfileDef, t: number): number {
   const x = (t - p1.t) / h;
   const x2 = x * x;
   const x3 = x2 * x;
-  const r =
-    (2 * x3 - 3 * x2 + 1) * p1.r +
-    (x3 - 2 * x2 + x) * h * m1 +
-    (-2 * x3 + 3 * x2) * p2.r +
-    (x3 - x2) * h * m2;
+  const r = (2 * x3 - 3 * x2 + 1) * p1.r + (x3 - 2 * x2 + x) * h * m1 + (-2 * x3 + 3 * x2) * p2.r + (x3 - x2) * h * m2;
   return Math.max(MIN_RADIUS, r);
 }

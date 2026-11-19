@@ -7,8 +7,13 @@ import { assembleMesh, assembleTorusMesh, assembleHollowMesh } from './surface';
 import type { ShapeId } from './shapes';
 import { revolveGrid, shapeGrid, isShapeId, DEFAULT_SHAPE_PARAMS } from './shapes';
 import {
-  profileById, shapedProfileRadius, DEFAULT_PROFILE_SHAPE,
-  FOURIER_PROFILE_ID, FOURIER_HEIGHT, DEFAULT_FOURIER_PARAMS, fourierRadius,
+  profileById,
+  shapedProfileRadius,
+  DEFAULT_PROFILE_SHAPE,
+  FOURIER_PROFILE_ID,
+  FOURIER_HEIGHT,
+  DEFAULT_FOURIER_PARAMS,
+  fourierRadius,
 } from './profiles';
 import { gridNormals, meshNormals } from './normals';
 import type { DisplaceEntry, DisplaceId, Params } from './displace';
@@ -221,9 +226,15 @@ export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh 
   if (stack.length > 0) {
     const normals = gridNormals(grid);
     onProgress?.(0.15, 'displacing');
-    applyDisplacements(grid, normals, stack, (j, nv) => {
-      if (onProgress && j % 32 === 0) onProgress(0.15 + 0.45 * (j / nv), 'displacing');
-    }, revolve ? bottomFade : undefined);
+    applyDisplacements(
+      grid,
+      normals,
+      stack,
+      (j, nv) => {
+        if (onProgress && j % 32 === 0) onProgress(0.15 + 0.45 * (j / nv), 'displacing');
+      },
+      revolve ? bottomFade : undefined,
+    );
   }
   onProgress?.(0.62, 'deforming');
   for (const id of DEFORM_IDS) {
@@ -234,11 +245,7 @@ export function buildMesh(p: BuildParams, onProgress?: ProgressFn): SurfaceMesh 
   // полярные фигуры всегда закрыты крышками (полюсные дырки), тор — без крышек
   const caps: CapMode = isShapeId(p.profile) ? 'both' : p.caps;
   const hollow = revolve && p.caps === 'bottom' && p.wall > 0;
-  const { positions, indices } = hollow
-    ? buildHollow(grid, p.wall)
-    : torus
-      ? assembleTorusMesh(grid)
-      : assembleMesh(grid, caps);
+  const { positions, indices } = hollow ? buildHollow(grid, p.wall) : torus ? assembleTorusMesh(grid) : assembleMesh(grid, caps);
   onProgress?.(0.85, 'normals');
   const normals = meshNormals(positions, indices);
   onProgress?.(1, 'done');

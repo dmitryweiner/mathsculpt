@@ -40,18 +40,25 @@ if (!out) {
   process.exit(1);
 }
 
-const PORT = 5173;
+const PORT = 5287;
 const BASE = `http://localhost:${PORT}`;
 
 async function serverUp() {
-  try { return (await fetch(BASE)).ok; } catch { return false; }
+  try {
+    return (await fetch(BASE)).ok;
+  } catch {
+    return false;
+  }
 }
 
 let devProc = null;
 if (!(await serverUp())) {
   devProc = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
   for (let i = 0; i < 30 && !(await serverUp()); i++) await new Promise((r) => setTimeout(r, 1000));
-  if (!(await serverUp())) { console.error(`server did not start on :${PORT}`); process.exit(1); }
+  if (!(await serverUp())) {
+    console.error(`server did not start on :${PORT}`);
+    process.exit(1);
+  }
 }
 
 const errors = [];
@@ -60,7 +67,9 @@ const page = await browser.newPage({
   viewport: { width: Number(flags.get('width')) || 1280, height: Number(flags.get('height')) || 820 },
 });
 page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+page.on('console', (m) => {
+  if (m.type() === 'error') errors.push(m.text());
+});
 
 const url = flags.has('hash') ? `${BASE}/#s=${flags.get('hash')}` : BASE;
 await page.goto(url);

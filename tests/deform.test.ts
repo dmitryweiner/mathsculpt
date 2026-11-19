@@ -16,7 +16,7 @@ describe('twist', () => {
     const g = unitCylinder();
     applyDeformer('twist', g, { turns: 0.25 });
     // вершина (i=0, j=nv): угол был 0, стал π/2
-    const k = (8 * 16) * 3;
+    const k = 8 * 16 * 3;
     expect(g.positions[k]).toBeCloseTo(0, 5);
     expect(g.positions[k + 1]).toBeCloseTo(1, 5);
     expect(g.positions[k + 2]).toBeCloseTo(1, 5);
@@ -36,7 +36,7 @@ describe('taper', () => {
   it('сжимает верх на 1−amount, низ не трогает', () => {
     const g = unitCylinder();
     applyDeformer('taper', g, { amount: 0.4, power: 1 });
-    const top = (8 * 16) * 3;
+    const top = 8 * 16 * 3;
     expect(Math.hypot(g.positions[top], g.positions[top + 1])).toBeCloseTo(0.6, 5);
     expect(Math.hypot(g.positions[0], g.positions[1])).toBeCloseTo(1, 5);
   });
@@ -44,7 +44,7 @@ describe('taper', () => {
   it('amount<0 расширяет', () => {
     const g = unitCylinder();
     applyDeformer('taper', g, { amount: -0.5, power: 1 });
-    const top = (8 * 16) * 3;
+    const top = 8 * 16 * 3;
     expect(Math.hypot(g.positions[top], g.positions[top + 1])).toBeCloseTo(1.5, 5);
   });
 });

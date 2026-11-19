@@ -7,8 +7,7 @@ import { buildMesh, defaultParams } from '../src/geo/build';
 import { profileById, profileRadius } from '../src/geo/profiles';
 
 const CTX = { height: 1 };
-const at = (lfo: SpatialLfoDef, u: number, v: number, px = 0, py = 0, pz = 0): number =>
-  lfoValueAt(lfo, u, v, px, py, pz, CTX);
+const at = (lfo: SpatialLfoDef, u: number, v: number, px = 0, py = 0, pz = 0): number => lfoValueAt(lfo, u, v, px, py, pz, CTX);
 
 function lfo(over: Partial<SpatialLfoDef>): SpatialLfoDef {
   return { ...defaultLfo(), ...over };
