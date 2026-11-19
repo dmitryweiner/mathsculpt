@@ -2,7 +2,7 @@
 // объёмы, нормировка, сериализация.
 import { buildMesh, defaultParams } from '../src/geo/build';
 import { SHAPE_IDS, superformula, shapeGrid, DEFAULT_SHAPE_PARAMS } from '../src/geo/shapes';
-import { validateMesh } from '../src/geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
 import { sanitizeState, stateToParams } from '../src/state/schema';
 
 function shapeParams(id: string, withRipples = true) {

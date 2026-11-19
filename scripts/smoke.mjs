@@ -109,14 +109,22 @@ for (const id of cardIds) {
 }
 console.log(`cards toggled: ${cardIds.length}`);
 
-// каждый встроенный пресет грузится и даёт watertight-меш
-const presetValues = await page.$$eval('#presetSel option', (els) => els.map((e) => e.value).filter((v) => v.startsWith('b:')));
+// каждый встроенный пресет открывается из диалога кита и даёт watertight-меш;
+// его имя — на кнопке пресетов
+await page.locator('#presetBtn').click();
+const presetValues = await page.$$eval('#presetList .preset-row[data-ref^="b:"]', (els) => els.map((e) => e.dataset.ref));
+await page.locator('#presetsClose').click();
 for (const v of presetValues) {
   ctxLabel = `preset:${v.slice(2)}`;
-  await page.selectOption('#presetSel', v);
+  await page.locator('#presetBtn').click();
+  const pick = page.locator(`#presetList .preset-row[data-ref="${v}"] .preset-pick`);
+  const name = await pick.locator('.preset-name').textContent();
+  await pick.click();
   await page.waitForTimeout(300);
   const status = await page.locator('#status').textContent();
   if (!status.includes('watertight ✓')) errors.push(`[${ctxLabel}] status="${status}"`);
+  if ((await page.locator('#presetBtn').textContent()).trim() !== name)
+    errors.push(`[${ctxLabel}] preset button: ${await page.locator('#presetBtn').textContent()}`);
 }
 console.log(`presets checked: ${presetValues.length}`);
 
@@ -143,7 +151,9 @@ await page.locator('#saveBtn').click();
 await page.waitForTimeout(200);
 await page.reload();
 await page.waitForTimeout(400);
-const mine = await page.$$eval('#presetSel option[value^="u:"]', (els) => els.map((e) => e.textContent));
+await page.locator('#presetBtn').click();
+const mine = await page.$$eval('#presetList .preset-row[data-ref^="u:"] input', (els) => els.map((e) => e.value));
+await page.locator('#presetsClose').click();
 if (!mine.includes('Smoke preset')) errors.push(`[savePreset] my presets: ${JSON.stringify(mine)}`);
 else console.log('save preset ok');
 
@@ -163,18 +173,6 @@ if (!wallStatus.includes('watertight ✓')) errors.push(`[wall] status="${wallSt
 await page.selectOption('#shape_caps', 'both');
 await page.waitForTimeout(200);
 if (await page.locator('#shape_wall').isVisible()) errors.push('[wall] slider visible in solid mode');
-
-ctxLabel = 'share';
-await page.locator('#shareBtn').click();
-await page.waitForTimeout(300);
-const hash = await page.evaluate(() => location.hash);
-if (!hash.startsWith('#s=')) errors.push(`[share] hash="${hash}"`);
-else {
-  await page.goto(`${BASE}/${hash}`);
-  await page.waitForTimeout(500);
-  const st = await page.locator('#status').textContent();
-  if (!st.includes('watertight ✓')) errors.push(`[share:restore] status="${st}"`);
-}
 
 // полная сборка в worker: статус со временем показывает "full NxN"
 ctxLabel = 'worker';
@@ -229,6 +227,23 @@ await page.locator('#exportBtn').click();
 const download = await downloadP;
 if (!download) errors.push('[export] no download event');
 else console.log('export ok:', download.suggestedFilename());
+
+// телефон: панель — нижний лист кита; ручка закрывает, «Settings» открывает
+ctxLabel = 'phone';
+const phone = await browser.newPage({ viewport: { width: 390, height: 780 } });
+attach(phone);
+await phone.goto(BASE);
+await phone.waitForTimeout(600);
+await phone.locator('#sheetClose').click();
+await phone.waitForTimeout(200);
+if (await phone.locator('#panel').evaluate((node) => node.classList.contains('open'))) errors.push('[phone] the sheet did not close');
+await phone.locator('#sheetOpen').click();
+await phone.waitForTimeout(200);
+if ((await phone.locator('#sheetOpen').getAttribute('aria-expanded')) !== 'true') errors.push('[phone] the sheet did not open');
+const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+if (overflow > 0) errors.push(`[phone] the page scrolls sideways by ${overflow} px`);
+await phone.close();
+console.log('phone sheet ok');
 
 if (flags.has('screenshot')) {
   const path = flags.get('screenshot');

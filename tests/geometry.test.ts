@@ -4,7 +4,7 @@
 import { buildMesh, defaultParams } from '../src/geo/build';
 import type { BuildParams } from '../src/geo/build';
 import { PROFILE_IDS, profileById } from '../src/geo/profiles';
-import { validateMesh } from '../src/geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
 
 const CASES: [string, boolean][] = PROFILE_IDS.flatMap((id) => [
   [id, false],

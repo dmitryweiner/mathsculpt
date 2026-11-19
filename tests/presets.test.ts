@@ -4,7 +4,7 @@
 import { PRESETS, PRESET_STATES, presetById } from '../src/state/presets';
 import { completeState, defaultState, sanitizeState, stateToParams } from '../src/state/schema';
 import { buildMesh } from '../src/geo/build';
-import { validateMesh } from '../src/geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
 import { en } from '../src/i18n/en';
 
 describe('встроенные пресеты', () => {

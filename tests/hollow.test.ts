@@ -2,7 +2,7 @@
 import { buildMesh, defaultParams } from '../src/geo/build';
 import type { BuildParams } from '../src/geo/build';
 import { PROFILE_IDS } from '../src/geo/profiles';
-import { validateMesh } from '../src/geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
 
 function vessel(profile: string, caps: BuildParams['caps'], wall: number, ripples = true): BuildParams {
   const p = defaultParams();

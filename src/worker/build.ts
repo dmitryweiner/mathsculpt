@@ -4,7 +4,8 @@
 
 import { buildMesh } from '../geo/build';
 import type { BuildParams } from '../geo/build';
-import { validateMesh, overhangFraction } from '../geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
+import { overhangFraction } from '../geo/overhang';
 
 export interface WorkerProgress {
   type: 'progress';

@@ -2,7 +2,7 @@
 import { applyDeformer, DEFORM_IDS, DEFAULT_DEFORM_PARAMS } from '../src/geo/deform';
 import { sampleGrid } from '../src/geo/surface';
 import { buildMesh, defaultParams } from '../src/geo/build';
-import { validateMesh } from '../src/geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
 
 const unitCylinder = () =>
   sampleGrid(16, 8, (u, v, out) => {

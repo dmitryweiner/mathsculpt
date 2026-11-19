@@ -1,46 +1,125 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- the panel's colour: our --panel over the kit's tokens -->
+    <meta name="theme-color" content="#161b22" />
     <title>MathSculpt — printable surfaces from formulas</title>
   </head>
-  <body>
-    <div id="app">
-      <header id="topbar">
-        <span id="brand">MathSculpt</span>
-        <select id="presetSel"></select>
-        <button id="saveBtn" class="tb-btn" title="Save current state as a user preset">💾 Save</button>
-        <button id="shareBtn" class="tb-btn" title="Copy share link">🔗 Share</button>
-        <button id="undoBtn" class="tb-btn" title="Undo (Ctrl/Cmd+Z)" disabled>↩️ Undo</button>
-        <button id="redoBtn" class="tb-btn" title="Redo (Ctrl/Cmd+Shift+Z)" disabled>↪️ Redo</button>
-        <span class="tb-spacer"></span>
-        <button id="exportBtn" class="tb-btn primary">Export STL</button>
-      </header>
-      <div id="content">
-        <aside id="panel">
-          <section class="card">
-            <h2>Shape</h2>
-            <div id="shapeControls"></div>
-            <div id="exportControls"></div>
-            <canvas id="profileGraph"></canvas>
-          </section>
-          <div id="carrierCards"></div>
-          <h3 class="group-title">Displacements</h3>
-          <div id="displaceCards"></div>
-          <h3 class="group-title">Deformers</h3>
-          <div id="deformCards"></div>
-          <div id="modCard"></div>
+  <body class="kit-app">
+    <header id="topbar" class="topbar">
+      <span id="brand" class="brand">MathSculpt</span>
+      <button
+        id="presetBtn"
+        type="button"
+        class="preset-button"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        data-i18n="kit.topbar.presets"
+        data-i18n-title="topbar.presets.title"
+        title="Built-in and saved presets"
+      >
+        Presets
+      </button>
+      <span class="spacer"></span>
+      <!-- a phone breaks the bar here: the brand above, the preset and the tools below -->
+      <span class="topbar-break"></span>
+      <div class="topbar-tools">
+        <button
+          id="saveBtn"
+          type="button"
+          class="tool-button"
+          title="Save as a preset"
+          aria-label="Save as a preset"
+          data-i18n-title="kit.topbar.savePreset"
+          data-i18n-aria="kit.topbar.savePreset"
+        >
+          💾
+        </button>
+        <button
+          id="undoBtn"
+          type="button"
+          class="tool-button"
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo (Ctrl+Z)"
+          data-i18n-title="kit.topbar.undo"
+          data-i18n-aria="kit.topbar.undo"
+          disabled
+        >
+          ↶
+        </button>
+        <button
+          id="redoBtn"
+          type="button"
+          class="tool-button"
+          title="Redo (Ctrl+Shift+Z)"
+          aria-label="Redo (Ctrl+Shift+Z)"
+          data-i18n-title="kit.topbar.redo"
+          data-i18n-aria="kit.topbar.redo"
+          disabled
+        >
+          ↷
+        </button>
+      </div>
+    </header>
+    <!-- what browser storage failed to keep (maker-kit's ui/banner) -->
+    <div id="storageNote" class="banner" hidden></div>
+    <!-- the view fills it; the panel is a sheet over it on a phone, beside it from 1024 px on the start side -->
+    <div id="content" class="workspace">
+      <main id="viewWrap" class="view">
+        <canvas id="view"></canvas>
+        <!-- the bar over the view (maker-kit's ui/progress) -->
+        <div id="progressWrap" class="view-progress" hidden></div>
+        <!-- a phone: the panel is a sheet over the view, this opens it (maker-kit's ui/sheet) -->
+        <button id="sheetOpen" type="button" class="sheet-open" aria-controls="panel" data-i18n="kit.sheet.open">Settings</button>
+      </main>
+      <aside id="panel" class="panel">
+        <button
+          id="sheetClose"
+          type="button"
+          class="sheet-handle"
+          title="Close the settings"
+          aria-label="Close the settings"
+          data-i18n-title="kit.sheet.close"
+          data-i18n-aria="kit.sheet.close"
+        ></button>
+        <section class="card">
+          <h2 data-i18n="panel.shape">Shape</h2>
+          <div id="shapeControls"></div>
+          <canvas id="profileGraph"></canvas>
+        </section>
+        <div id="carrierCards"></div>
+        <h3 class="group-title" data-i18n="panel.displace">Displacements</h3>
+        <div id="displaceCards"></div>
+        <h3 class="group-title" data-i18n="panel.deform">Deformers</h3>
+        <div id="deformCards"></div>
+        <div id="modCard"></div>
+        <section class="card" id="exportCard">
+          <h2 data-i18n="panel.export">STL export</h2>
+          <div id="exportControls"></div>
+          <button id="exportBtn" type="button" class="btn primary wide" data-i18n="export.button">Export STL</button>
           <p id="status"></p>
-          <p id="warnings"></p>
-        </aside>
-        <main id="viewWrap">
-          <canvas id="view"></canvas>
-          <div id="progressWrap" hidden>
-            <div id="progressBar"><div id="progressFill"></div></div>
-            <span id="progressLabel"></span>
-          </div>
-        </main>
+          <!-- blockers first, then warnings (maker-kit's ui/messageList) -->
+          <ul id="messages" class="messages" hidden></ul>
+        </section>
+      </aside>
+    </div>
+    <div id="presets" class="modal" hidden>
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="presetsTitle">
+        <h2 id="presetsTitle" data-i18n="presets.title">Presets</h2>
+        <button
+          id="presetsClose"
+          class="icon-button modal-close"
+          type="button"
+          data-i18n-title="kit.modal.close"
+          data-i18n-aria="kit.modal.close"
+          title="Close"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+        <div class="modal-body"><div id="presetList"></div></div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

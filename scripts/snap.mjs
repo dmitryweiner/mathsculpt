@@ -7,10 +7,9 @@
 //   node scripts/snap.mjs --preset gyroid-sphere --out shots/g.png
 //   node scripts/snap.mjs --profile supershape --full --out shots/s.png   # дождаться worker
 //   node scripts/snap.mjs --width 390 --height 780 --out shots/mobile.png
-//   node scripts/snap.mjs --hash <token> --out shots/shared.png
 //   node scripts/snap.mjs --profile vase --set p_profileShape_belly=0.6 --out shots/x.png
 //
-// Флаги: --profile <id>, --preset <id> (src/state/presets.ts), --hash <token>, --caps <both|bottom>,
+// Флаги: --profile <id>, --preset <id> (src/state/presets.ts), --caps <both|bottom>,
 //        --wall <mm>, --set <id>=<value> (повторяемый — любой ползунок или
 //        селект панели по id, свёрнутая карточка раскрывается),
 //        --width, --height, --wait <ms> (доп. пауза), --full (ждать полной
@@ -24,7 +23,7 @@ import { dirname } from 'node:path';
 import { chromium } from 'playwright';
 
 const args = process.argv.slice(2);
-const VALUE_FLAGS = new Set(['profile', 'preset', 'hash', 'caps', 'wall', 'width', 'height', 'wait', 'out']);
+const VALUE_FLAGS = new Set(['profile', 'preset', 'caps', 'wall', 'width', 'height', 'wait', 'out']);
 const flags = new Map();
 const sets = []; // --set id=value (повторяемый): выставить любой input/slider
 const evals = []; // --eval <js> (повторяемый): напечатать значение выражения на странице
@@ -77,8 +76,7 @@ page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text());
 });
 
-const url = flags.has('hash') ? `${BASE}/#s=${flags.get('hash')}` : BASE;
-await page.goto(url);
+await page.goto(BASE);
 await page.waitForTimeout(600);
 
 /**
@@ -110,7 +108,8 @@ for (const pair of sets) {
   await setControl(pair.slice(0, eq), pair.slice(eq + 1));
 }
 if (flags.has('preset')) {
-  await page.selectOption('#presetSel', `b:${flags.get('preset')}`);
+  await page.locator('#presetBtn').click();
+  await page.locator(`#presetList .preset-row[data-ref="b:${flags.get('preset')}"] .preset-pick`).click();
   await page.waitForTimeout(350);
 }
 // --full: дождаться, пока статус перестанет быть "preview" (worker закончил)

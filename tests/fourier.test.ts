@@ -1,7 +1,7 @@
 // Фурье-профиль: формула, кламп, сборка, сериализация.
 import { fourierRadius, DEFAULT_FOURIER_PARAMS, FOURIER_PROFILE_ID } from '../src/geo/profiles';
 import { buildMesh, defaultParams, radiusFnFor } from '../src/geo/build';
-import { validateMesh } from '../src/geo/validate';
+import { validateMesh } from 'maker-kit/3d/validate';
 import { sanitizeState, stateToParams } from '../src/state/schema';
 
 describe('fourierRadius', () => {

@@ -1,6 +1,5 @@
-// Сериализация состояния: sanitize, share-токены, round-trip.
-import { sanitizeState, stateToParams, paramsToState } from '../src/state/schema';
-import { encodeStateToken, decodeStateToken, tokenFromHash, b64urlEncode } from '../src/state/share';
+// Сериализация состояния: sanitize, round-trip через JSON.
+import { completeState, sanitizeState, stateToParams, paramsToState } from '../src/state/schema';
 import { defaultParams } from '../src/geo/build';
 
 describe('sanitizeState', () => {
@@ -81,8 +80,8 @@ describe('stateToParams', () => {
   });
 });
 
-describe('share round-trip', () => {
-  it('encode → decode восстанавливает состояние', () => {
+describe('JSON round-trip', () => {
+  it('состояние переживает JSON и разбор без потерь', () => {
     const params = defaultParams();
     params.profile = 'goblet';
     params.displace.harmonics.on = true;
@@ -90,33 +89,11 @@ describe('share round-trip', () => {
     params.deform.twist = { on: true, params: { turns: 0.4 } };
     params.caps = 'bottom';
     const state = paramsToState(params, 150, 3.5);
-    const token = encodeStateToken(state);
-    expect(token).toMatch(/^[A-Za-z0-9\-_]+$/);
-    const decoded = decodeStateToken(token);
-    expect(decoded?.heightMm).toBe(150);
-    expect(decoded?.wallMm).toBe(3.5);
-    const p2 = stateToParams(decoded ?? {});
-    expect(p2.profile).toBe('goblet');
-    expect(p2.displace.harmonics.on).toBe(true);
-    expect(p2.displace.harmonics.params.l).toBe(7);
-    expect(p2.deform.twist.on).toBe(true);
-    expect(p2.deform.twist.params.turns).toBe(0.4);
+    const back = completeState(sanitizeState(JSON.parse(JSON.stringify(state))) ?? {});
+    expect(back).toEqual(state);
   });
 
-  it('имя пресета в старой ссылке не попадает в состояние', () => {
-    const token = b64urlEncode(JSON.stringify({ ...paramsToState(defaultParams(), 120, 2), presetName: 'Old' }));
-    expect(decodeStateToken(token)).not.toHaveProperty('presetName');
-  });
-
-  it('битые токены → null', () => {
-    expect(decodeStateToken('%%%')).toBeNull();
-    expect(decodeStateToken(b64urlEncode('not json'))).toBeNull();
-    expect(decodeStateToken(b64urlEncode('42'))).toBeNull();
-  });
-
-  it('tokenFromHash', () => {
-    expect(tokenFromHash('#s=abc-_9')).toBe('abc-_9');
-    expect(tokenFromHash('#other')).toBeNull();
-    expect(tokenFromHash('')).toBeNull();
+  it('имя пресета из старых записей не попадает в состояние', () => {
+    expect(sanitizeState({ ...paramsToState(defaultParams(), 120, 2), presetName: 'Old' })).not.toHaveProperty('presetName');
   });
 });
