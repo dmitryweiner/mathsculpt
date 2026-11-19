@@ -34,7 +34,7 @@ describe('профили-пресеты', () => {
   it('isProfileId', () => {
     expect(isProfileId('vase')).toBe(true);
     expect(isProfileId('nope')).toBe(false);
-    expect(() => profileById('nope')).toThrow();
+    expect(() => profileById('nope')).toThrow('unknown profile: nope');
   });
 });
 

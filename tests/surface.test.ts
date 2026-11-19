@@ -20,8 +20,8 @@ describe('sampleGrid', () => {
   });
 
   it('отвергает вырожденные размерности', () => {
-    expect(() => sampleGrid(2, 4, (_u, _v, o) => void o.fill(0))).toThrow();
-    expect(() => sampleGrid(8, 0, (_u, _v, o) => void o.fill(0))).toThrow();
+    expect(() => sampleGrid(2, 4, (_u, _v, o) => void o.fill(0))).toThrow('sampleGrid: bad dims 2x4');
+    expect(() => sampleGrid(8, 0, (_u, _v, o) => void o.fill(0))).toThrow('sampleGrid: bad dims 8x0');
   });
 });
 

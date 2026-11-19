@@ -84,7 +84,7 @@ function sanitizeCards(u: unknown, isId: (k: string) => boolean): Record<string,
   for (const [id, st] of Object.entries(u)) {
     if (!isId(id) || !isRecord(st)) continue;
     const snap: PartialCardSnapshot = {};
-    if (typeof st.on === 'boolean') snap.on = st.on === true;
+    if (typeof st.on === 'boolean') snap.on = st.on;
     const params = toParams(st.params);
     if (params) snap.params = params;
     out[id] = snap;

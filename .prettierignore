@@ -1,0 +1,7 @@
+dist/
+package-lock.json
+# written by UPDATE_GOLDEN=1 (tests/golden.test.ts)
+tests/golden/
+# hand-wrapped prose: prettier pulls a list item's line that starts inside
+# an inline code span back to column 0
+*.md

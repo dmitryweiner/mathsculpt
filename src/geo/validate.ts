@@ -120,7 +120,9 @@ export function validateMesh(mesh: SurfaceMesh, areaEps = 1e-12): MeshReport {
   const edgeKey = (a: number, b: number): number => (a < b ? a * nVerts + b : b * nVerts + a);
   let volume6 = 0;
   let degenerate = 0;
-  for (let t = 0; indicesValid && t < indices.length; t += 3) {
+  // с битыми индексами треугольники не обходим вовсе
+  const indexEnd = indicesValid ? indices.length : 0;
+  for (let t = 0; t < indexEnd; t += 3) {
     const ia = indices[t];
     const ib = indices[t + 1];
     const ic = indices[t + 2];
