@@ -1,33 +1,63 @@
+/*
+ * Своё поверх кита (maker-kit/styles/kit.css импортируется первым и лежит в
+ * @layer kit — любое правило здесь его побеждает). Карточки, строки,
+ * ползунки с −/+ и точным полем, список маршрутов — китовые; здесь палитра
+ * и то, чего у кита нет: заголовки групп, график профиля, бейдж ∿.
+ *
+ * Раскладка страницы (шапка, панель, вид, полоса прогресса) пока своя,
+ * от десктопа; её заменит раскладка кита (m5-ui, plans/PLAN-MAKER-KIT.md).
+ */
+
 :root {
+  /*
+   * Своя голубая палитра поверх токенов кита: тёмные нейтральные и акцент
+   * #58a6ff, как было до кита. Остальное — плотность, отступы, шрифт —
+   * китовое.
+   */
   --bg: #0d1117;
   --panel: #161b22;
   --card: #1c2330;
   --text: #dce3ea;
   --muted: #8b98a5;
+  --line: #30363d;
   --accent: #58a6ff;
-  --warn: #e3b341;
-  color-scheme: dark;
+  --accent-strong: #8cc4ff;
+  --accent-soft: rgb(88 166 255 / 14%);
+  --on-accent: #04141f;
+  --overlay: rgb(13 17 23 / 75%);
 }
 
-* {
-  box-sizing: border-box;
+/* заголовок группы карточек: «Displacements», «Deformers» */
+.group-title {
+  margin: var(--space-3) 2px 6px;
+  font-size: var(--font-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
 }
 
-/* hidden-атрибут должен побеждать display:flex/block из классов (.row и др.) */
-[hidden] {
-  display: none !important;
+/* подзаголовок внутри карточки: «LFO 1», «Routes» в модуляции */
+.sub-title {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--font-tiny);
+  font-weight: 600;
+  color: var(--accent);
 }
 
-body {
-  margin: 0;
-  font:
-    14px/1.45 system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
-  background: var(--bg);
-  color: var(--text);
+/* ∿ у имени ползунка, который двигает LFO */
+.mod-badge {
+  color: var(--accent);
+  font-weight: 700;
 }
+
+#profileGraph {
+  display: block;
+  width: 100%;
+  height: 110px;
+  margin-block-start: 6px;
+}
+
+/* --- раскладка страницы до m5-ui --- */
 
 #app {
   display: flex;
@@ -41,7 +71,7 @@ body {
   gap: 8px;
   padding: 8px 12px;
   background: var(--panel);
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--line);
 }
 
 #brand {
@@ -59,7 +89,7 @@ body {
   padding: 5px 12px;
   background: var(--card);
   color: var(--text);
-  border: 1px solid #30363d;
+  border: 1px solid var(--line);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -68,20 +98,20 @@ body {
   border-color: var(--accent);
 }
 
+.tb-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .tb-btn.primary {
   background: var(--accent);
-  color: #04141f;
+  color: var(--on-accent);
   font-weight: 600;
   border: none;
 }
 
-#heightLab {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-#heightLab input {
-  width: 56px;
+#topbar select {
+  max-width: 190px;
 }
 
 #content {
@@ -91,136 +121,11 @@ body {
 }
 
 #panel {
-  width: 320px;
+  width: var(--panel-w);
   flex: none;
   padding: 12px;
   background: var(--panel);
   overflow-y: auto;
-}
-
-.group-title {
-  margin: 14px 2px 6px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--muted);
-}
-
-.card,
-.fcard {
-  background: var(--card);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-}
-
-.card h2 {
-  margin: 0 0 8px;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--muted);
-}
-
-.fcard {
-  padding: 6px 10px;
-}
-
-.fcard-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  min-height: 26px;
-}
-
-.fcard-title {
-  font-weight: 600;
-}
-
-.fcard-tag {
-  font-size: 11px;
-  color: var(--accent);
-  background: rgba(88, 166, 255, 0.12);
-  border-radius: 10px;
-  padding: 1px 8px;
-}
-
-.fcard-caret {
-  margin-left: auto;
-  color: var(--muted);
-}
-
-.fcard-desc {
-  color: var(--muted);
-  font-size: 11.5px;
-  margin: 4px 0 6px;
-}
-
-.fcard.collapsed .fcard-body {
-  display: none;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 5px 0;
-}
-
-.row > span {
-  flex: none;
-  width: 88px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.row input[type='range'] {
-  flex: 1;
-  min-width: 0;
-  accent-color: var(--accent);
-}
-
-.row output {
-  flex: none;
-  width: 42px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-}
-
-.adj-btn {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  line-height: 1;
-  background: var(--panel);
-  color: var(--muted);
-  border: 1px solid #30363d;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.adj-btn:hover {
-  color: var(--text);
-  border-color: var(--accent);
-}
-
-select,
-input[type='number'] {
-  flex: 1;
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 4px 6px;
-}
-
-#topbar select {
-  flex: none;
-  max-width: 190px;
 }
 
 #status {
@@ -244,10 +149,10 @@ input[type='number'] {
   overflow: hidden;
 }
 
-#profileGraph {
+#view {
   width: 100%;
-  height: 110px;
-  margin-top: 6px;
+  height: 100%;
+  display: block;
 }
 
 #progressWrap {
@@ -263,7 +168,7 @@ input[type='number'] {
 #progressBar {
   flex: 1;
   height: 6px;
-  background: rgba(139, 152, 165, 0.25);
+  background: rgb(139 152 165 / 25%);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -281,54 +186,6 @@ input[type='number'] {
   min-width: 80px;
 }
 
-.mod-toggle {
-  cursor: pointer;
-  user-select: none;
-}
-
-.lfo-box .row > span {
-  width: 60px;
-}
-
-.lfo-head {
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-
-.route-row select {
-  min-width: 0;
-}
-
-.route-src {
-  flex: none;
-  width: 74px;
-}
-
-.route-arrow {
-  color: var(--muted);
-  flex: none;
-}
-
-.route-del {
-  color: var(--warn);
-}
-
-.mod-badge {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-#addRouteBtn {
-  width: 100%;
-  margin: 2px 0 10px;
-}
-
-#card_fourier .fcard-head {
-  cursor: default;
-}
-
 @media (max-width: 760px) {
   #topbar {
     flex-wrap: wrap;
@@ -342,16 +199,10 @@ input[type='number'] {
   #panel {
     width: 100%;
     max-height: 48vh;
-    border-top: 1px solid #30363d;
+    border-top: 1px solid var(--line);
   }
 
   #viewWrap {
     min-height: 40vh;
   }
-}
-
-#view {
-  width: 100%;
-  height: 100%;
-  display: block;
 }

@@ -10,25 +10,23 @@ export interface ProfilePoint {
 
 export interface ProfileDef {
   id: string;
-  label: string;
   /** высота в тех же единицах, что r (аспект фигуры) */
   height: number;
   points: ProfilePoint[];
 }
 
-function sampledProfile(id: string, label: string, height: number, radius: (t: number) => number): ProfileDef {
+function sampledProfile(id: string, height: number, radius: (t: number) => number): ProfileDef {
   const points: ProfilePoint[] = [];
   for (let i = 0; i <= 16; i++) {
     const t = i / 16;
     points.push({ t, r: Math.max(0.03, radius(t)) });
   }
-  return { id, label, height, points };
+  return { id, height, points };
 }
 
 export const PROFILES: ProfileDef[] = [
   {
     id: 'vase',
-    label: 'Vase',
     height: 1.0,
     points: [
       { t: 0, r: 0.24 },
@@ -42,7 +40,6 @@ export const PROFILES: ProfileDef[] = [
   },
   {
     id: 'amphora',
-    label: 'Amphora',
     height: 1.1,
     points: [
       { t: 0, r: 0.12 },
@@ -56,7 +53,6 @@ export const PROFILES: ProfileDef[] = [
   },
   {
     id: 'bottle',
-    label: 'Bottle',
     height: 1.15,
     points: [
       { t: 0, r: 0.3 },
@@ -69,7 +65,6 @@ export const PROFILES: ProfileDef[] = [
   },
   {
     id: 'bowl',
-    label: 'Bowl',
     height: 0.55,
     points: [
       { t: 0, r: 0.16 },
@@ -81,7 +76,6 @@ export const PROFILES: ProfileDef[] = [
   },
   {
     id: 'goblet',
-    label: 'Goblet',
     height: 1.0,
     points: [
       { t: 0, r: 0.3 },
@@ -94,29 +88,28 @@ export const PROFILES: ProfileDef[] = [
       { t: 1, r: 0.33 },
     ],
   },
-  sampledProfile('bezier', 'Bezier curve', 1, (t) => {
+  sampledProfile('bezier', 1, (t) => {
     const s = 1 - t;
     return s * s * s * 0.2 + 3 * s * s * t * 0.42 + 3 * s * t * t * 0.12 + t * t * t * 0.24;
   }),
   sampledProfile(
     'gaussian-profile',
-    'Gaussian mixture',
     1,
     (t) => 0.16 + 0.28 * Math.exp(-Math.pow((t - 0.38) / 0.24, 2)) + 0.08 * Math.exp(-Math.pow((t - 0.9) / 0.09, 2)),
   ),
-  sampledProfile('superellipse-profile', 'Superellipse vessel', 1, (t) => {
+  sampledProfile('superellipse-profile', 1, (t) => {
     const y = 2 * t - 1;
     return 0.1 + 0.36 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(y), 3)), 1 / 3);
   }),
-  sampledProfile('catenary', 'Catenary', 1, (t) => 0.16 + 0.15 * (Math.cosh(2.4 * (t - 0.5)) - 1)),
-  sampledProfile('tractrix', 'Tractrix', 1.05, (t) => 0.1 + 0.34 * Math.sqrt(Math.max(0, 1 - Math.pow(0.92 * t, 2)))),
-  sampledProfile('stem-bowl', 'Stem and bowl', 1.1, (t) => {
+  sampledProfile('catenary', 1, (t) => 0.16 + 0.15 * (Math.cosh(2.4 * (t - 0.5)) - 1)),
+  sampledProfile('tractrix', 1.05, (t) => 0.1 + 0.34 * Math.sqrt(Math.max(0, 1 - Math.pow(0.92 * t, 2)))),
+  sampledProfile('stem-bowl', 1.1, (t) => {
     const stem = 0.07 + 0.18 * Math.exp(-Math.pow(t / 0.12, 2));
     const bowl = 0.29 / (1 + Math.exp(-18 * (t - 0.58)));
     const rim = 0.05 * Math.exp(-Math.pow((t - 0.96) / 0.08, 2));
     return stem + bowl + rim;
   }),
-  sampledProfile('piecewise', 'Smooth piecewise', 1, (t) => {
+  sampledProfile('piecewise', 1, (t) => {
     const smoothstep = (x: number): number => {
       const q = Math.min(1, Math.max(0, x));
       return q * q * (3 - 2 * q);

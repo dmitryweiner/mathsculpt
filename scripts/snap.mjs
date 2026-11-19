@@ -11,9 +11,12 @@
 //   node scripts/snap.mjs --profile vase --set p_profileShape_belly=0.6 --out shots/x.png
 //
 // Флаги: --profile <id>, --preset <id> (src/state/presets.ts), --hash <token>, --caps <both|bottom>,
-//        --wall <mm>, --set <id>=<value> (повторяемый — любой input/slider),
+//        --wall <mm>, --set <id>=<value> (повторяемый — любой ползунок или
+//        селект панели по id, свёрнутая карточка раскрывается),
 //        --width, --height, --wait <ms> (доп. пауза), --full (ждать полной
-//        сборки в worker), --out <path> (обязателен). Печатает #status и ошибки.
+//        сборки в worker), --eval <js> (повторяемый — печатает значение
+//        выражения на странице: где элемент, что в нём), --out <path>
+//        (обязателен). Печатает #status и ошибки.
 
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -24,10 +27,13 @@ const args = process.argv.slice(2);
 const VALUE_FLAGS = new Set(['profile', 'preset', 'hash', 'caps', 'wall', 'width', 'height', 'wait', 'out']);
 const flags = new Map();
 const sets = []; // --set id=value (повторяемый): выставить любой input/slider
+const evals = []; // --eval <js> (повторяемый): напечатать значение выражения на странице
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--set') {
     sets.push(args[++i]);
+  } else if (a === '--eval') {
+    evals.push(args[++i]);
   } else if (a.startsWith('--')) {
     const name = a.slice(2);
     flags.set(name, VALUE_FLAGS.has(name) ? args[++i] : 'true');
@@ -75,26 +81,33 @@ const url = flags.has('hash') ? `${BASE}/#s=${flags.get('hash')}` : BASE;
 await page.goto(url);
 await page.waitForTimeout(600);
 
-if (flags.has('profile')) {
-  await page.selectOption('#profile', flags.get('profile'));
-  await page.waitForTimeout(350);
+/**
+ * Ставит значение строке панели по id: селекту — выбором, ползунку — как
+ * отпущенному (input, затем change — законченная правка). Свёрнутую
+ * карточку сначала раскрывает: контрол в ней не виден.
+ */
+async function setControl(id, value) {
+  await page.evaluate((target) => {
+    const card = document.getElementById(target)?.closest('.fcard.collapsed');
+    card?.querySelector(':scope > .fcard-head')?.click();
+  }, id);
+  const control = page.locator(`#${id}`);
+  if ((await control.evaluate((node) => node.tagName)) === 'SELECT') {
+    await control.selectOption(value);
+  } else {
+    await control.fill(value);
+    await control.dispatchEvent('input');
+    await control.dispatchEvent('change');
+  }
+  await page.waitForTimeout(250);
 }
-if (flags.has('caps')) {
-  await page.selectOption('#caps', flags.get('caps'));
-  await page.waitForTimeout(300);
-}
-if (flags.has('wall')) {
-  await page.locator('#wallMm').fill(flags.get('wall'));
-  await page.locator('#wallMm').dispatchEvent('input');
-  await page.waitForTimeout(300);
-}
+
+if (flags.has('profile')) await setControl('shape_profile', flags.get('profile'));
+if (flags.has('caps')) await setControl('shape_caps', flags.get('caps'));
+if (flags.has('wall')) await setControl('shape_wall', flags.get('wall'));
 for (const pair of sets) {
   const eq = pair.indexOf('=');
-  const id = pair.slice(0, eq);
-  const value = pair.slice(eq + 1);
-  await page.locator(`#${id}`).fill(value);
-  await page.locator(`#${id}`).dispatchEvent('input');
-  await page.waitForTimeout(200);
+  await setControl(pair.slice(0, eq), pair.slice(eq + 1));
 }
 if (flags.has('preset')) {
   await page.selectOption('#presetSel', `b:${flags.get('preset')}`);
@@ -109,6 +122,12 @@ if (flags.has('full')) {
 }
 if (flags.has('wait')) await page.waitForTimeout(Number(flags.get('wait')));
 
+// --eval: значение выражения на странице до кадра — где элемент, что в нём;
+// выражение может и действовать (`document.getElementById('addRouteBtn').click()`)
+for (const expression of evals) {
+  console.log(`eval ${expression}:`, JSON.stringify(await page.evaluate(expression)));
+  await page.waitForTimeout(200);
+}
 mkdirSync(dirname(out), { recursive: true });
 await page.screenshot({ path: out });
 console.log(out);
