@@ -1,4 +1,4 @@
-// overhangFraction — доля свесов круче 60° (замкнутость и сито экспорта проверяет кит).
+// overhangFraction — the share of overhangs steeper than 60° (the kit checks closedness and the export gate).
 import { sampleGrid, assembleMesh } from '../src/geo/surface';
 import { meshNormals } from 'maker-kit/3d/mesh';
 import { overhangFraction } from '../src/geo/overhang';
@@ -17,7 +17,7 @@ const withNormals = (m: { positions: Float32Array; indices: Uint32Array }) => ({
 });
 
 describe('overhangFraction', () => {
-  it('цилиндр: свесов нет (дно исключено, верхняя крышка смотрит вверх)', () => {
+  it('a cylinder: no overhangs (the floor excluded, the top cap faces up)', () => {
     const mesh = withNormals(
       assembleMesh(
         revolve(() => 1),
@@ -27,8 +27,8 @@ describe('overhangFraction', () => {
     expect(overhangFraction(mesh)).toBe(0);
   });
 
-  it('гриб (резкое расширение вверх круче 60°) — свес заметен', () => {
-    // r растёт со скоростью dr/dz = 3 > tan(60°): боковая стенка нависает
+  it('a mushroom (widening upwards steeper than 60°) has a clear overhang', () => {
+    // r grows at dr/dz = 3 > tan(60°): the side wall overhangs
     const mesh = withNormals(
       assembleMesh(
         revolve((t) => 0.2 + 3 * t),
@@ -38,7 +38,7 @@ describe('overhangFraction', () => {
     expect(overhangFraction(mesh)).toBeGreaterThan(0.3);
   });
 
-  it('сужение кверху — свесов нет', () => {
+  it('narrowing upwards: no overhangs', () => {
     const mesh = withNormals(
       assembleMesh(
         revolve((t) => 1 - 0.5 * t),

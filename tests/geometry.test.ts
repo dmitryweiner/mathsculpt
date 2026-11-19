@@ -1,6 +1,6 @@
-// Свойства геометрии (аналог audio-sanity): каждый профиль, с ripples и без —
-// конечность, watertight, нормали наружу (объём > 0), без вырожденных
-// треугольников, bbox в разумных пределах.
+// Geometry properties (the counterpart of audio sanity checks): every
+// profile, with and without ripples — finite, watertight, normals outwards
+// (volume > 0), no degenerate triangles, a bbox within sane limits.
 import { buildMesh, defaultParams } from '../src/geo/build';
 import type { BuildParams } from '../src/geo/build';
 import { PROFILE_IDS, profileById } from '../src/geo/profiles';
@@ -20,8 +20,8 @@ function params(profile: string, withRipples: boolean): BuildParams {
   return p;
 }
 
-describe('свойства меша', () => {
-  it.each(CASES)('%s (ripples=%s): валидный закрытый меш', (profile, withRipples) => {
+describe('mesh properties', () => {
+  it.each(CASES)('%s (ripples=%s): a valid closed mesh', (profile, withRipples) => {
     const mesh = buildMesh(params(profile, withRipples));
     const report = validateMesh(mesh);
     expect(report.finite).toBe(true);
@@ -31,16 +31,16 @@ describe('свойства меша', () => {
 
     const def = profileById(profile);
     const { min, max } = report.bbox;
-    // xy в пределах максимального радиуса + амплитуда смещения
+    // xy within the largest radius + the displacement amplitude
     const rMax = Math.max(...def.points.map((p) => p.r)) + 0.1;
     expect(Math.max(Math.abs(min[0]), Math.abs(max[0]), Math.abs(min[1]), Math.abs(max[1]))).toBeLessThan(rMax * 1.2);
-    // z покрывает высоту (с допуском на смещение крышек)
+    // z covers the height (allowing for the caps moving)
     expect(min[2]).toBeGreaterThan(-0.1);
     expect(max[2]).toBeLessThan(def.height + 0.1);
     expect(max[2] - min[2]).toBeGreaterThan(def.height * 0.8);
   });
 
-  it('нормали вершин единичной длины', () => {
+  it('vertex normals have unit length', () => {
     const mesh = buildMesh(params('vase', true));
     for (let i = 0; i < mesh.normals.length; i += 3) {
       const len = Math.hypot(mesh.normals[i], mesh.normals[i + 1], mesh.normals[i + 2]);
@@ -48,7 +48,7 @@ describe('свойства меша', () => {
     }
   });
 
-  it('детерминизм: одинаковые параметры → одинаковый меш', () => {
+  it('determinism: the same parameters → the same mesh', () => {
     const a = buildMesh(params('amphora', true));
     const b = buildMesh(params('amphora', true));
     expect(Array.from(a.positions)).toEqual(Array.from(b.positions));

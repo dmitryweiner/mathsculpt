@@ -1,25 +1,26 @@
 #!/usr/bin/env node
-// Гибкий одиночный скриншот для отладки — заменяет одноразовые inline-скрипты.
-// Сервер и браузер — китовой обвязки (scripts/lib/harness.mjs): свой порт,
-// ошибки консоли/страницы печатаются.
+// One debug screenshot in a given state — instead of throwaway inline scripts.
+// The server and the browser are the kit's harness (scripts/lib/harness.mjs):
+// the project's own port, console and page errors printed.
 //
 //   node scripts/snap.mjs --out shots/x.png
 //   node scripts/snap.mjs --profile torus --out shots/torus.png
 //   node scripts/snap.mjs --preset gyroid-sphere --out shots/g.png
-//   node scripts/snap.mjs --profile supershape --full --out shots/s.png   # дождаться воркера
+//   node scripts/snap.mjs --profile supershape --full --out shots/s.png   # wait for the worker
 //   node scripts/snap.mjs --width 390 --height 780 --out shots/mobile.png
 //   node scripts/snap.mjs --preset classic-vase --set p_profileShape_belly=0.6 --out shots/x.png
 //   node scripts/snap.mjs --lang he --eval "document.getElementById('addRouteBtn').click()" --out shots/he.png
 //
-// Флаги: --lang <en|ru|uk|he> (язык браузера), --preset <id>
-//        (src/state/presets.ts; ставится первым — остальное правит его),
+// Flags: --lang <en|ru|uk|he> (the browser's language), --preset <id>
+//        (src/state/presets.ts; applied first, the other flags edit it),
 //        --profile <id>, --caps <both|bottom>, --wall <mm>, --set <id>=<value>
-//        (повторяемый — любой ползунок или селект панели по id, свёрнутая
-//        карточка раскрывается), --width, --height, --wait <ms> (доп.
-//        пауза), --full (ждать полной сборки в воркере), --eval <js>
-//        (повторяемый — печатает значение выражения на странице до кадра:
-//        где элемент, что в нём; может и действовать), --preview (прод-сборка),
-//        --out <path> (обязателен). Печатает #status и ошибки.
+//        (repeatable — any slider or select of the panel by its id; a folded
+//        card is opened), --width, --height, --wait <ms> (an extra pause),
+//        --full (wait for the worker's full build), --eval <js> (repeatable —
+//        prints an expression's value in the page before the shot: where an
+//        element is, what it holds; it may act too), --preview (the
+//        production build), --out <path> (required). Prints #status and
+//        the errors.
 
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -36,7 +37,7 @@ if (!out) {
   process.exit(1);
 }
 
-/** --lang: язык браузера — приложение выбирает по нему, как у человека */
+/** --lang: the browser's language — the app picks by it, as for a person */
 const LOCALES = { en: 'en-US', ru: 'ru-RU', uk: 'uk-UA', he: 'he-IL' };
 
 const app = await launch({ preview: flags.has('preview') });
@@ -51,9 +52,9 @@ await app.run(async () => {
   await page.waitForSelector('#status[data-build]');
 
   /**
-   * Ставит значение строке панели по id: селекту — выбором, ползунку — как
-   * отпущенному (input, затем change — законченная правка). Свёрнутую
-   * карточку сначала раскрывает: контрол в ней не виден.
+   * Sets a panel row by its id: a select by choosing, a slider as if
+   * released (input, then change — a finished edit). Unfolds a folded card
+   * first: a control in it is not visible.
    */
   async function setControl(id, value) {
     await page.evaluate((target) => {
@@ -84,12 +85,12 @@ await app.run(async () => {
     const eq = pair.indexOf('=');
     await setControl(pair.slice(0, eq), pair.slice(eq + 1));
   }
-  // --full: статус говорит о полной сборке на любом языке (`data-build`)
+  // --full: the status tells the full build in any language (`data-build`)
   if (flags.has('full')) await page.waitForSelector('#status[data-build="full"]', { timeout: 30000 });
   if (flags.has('wait')) await page.waitForTimeout(Number(flags.get('wait')));
 
-  // --eval: значение выражения на странице до кадра — где элемент, что в нём;
-  // выражение может и действовать (`document.getElementById('addRouteBtn').click()`)
+  // --eval: an expression's value in the page before the shot — where an element
+  // is, what it holds; it may act too (`document.getElementById('addRouteBtn').click()`)
   for (const expression of flags.get('eval') ?? []) {
     console.log(`eval ${expression}:`, JSON.stringify(await page.evaluate(expression)));
     await page.waitForTimeout(200);

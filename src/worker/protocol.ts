@@ -1,28 +1,28 @@
-// Задача воркера и её проверка. Граница воркера — такая же внешняя граница,
-// как файл или хранилище: `serveJobs` кита отвечает ошибкой на то, что
-// `isBuildJob` не берёт, а состояние задачи воркер всё равно чистит сам
-// (`runJob`).
+// The worker's job and its check. The worker's boundary is as much an outer
+// boundary as a file or storage: the kit's `serveJobs` answers what
+// `isBuildJob` refuses with an error, and the worker cleans the job's state
+// itself anyway (`runJob`).
 
 import type { SurfaceMesh } from 'maker-kit/3d/mesh';
 import type { MeshReport } from 'maker-kit/3d/validate';
 import type { AppState } from '../state/schema';
 import { sanitizeState } from '../state/schema';
 
-/** Детализации полной сборки — строка «Full res». */
+/** The full build's resolutions — the Full res row. */
 export const RESOLUTIONS = [192, 256, 384, 512] as const;
 
 export interface BuildJob {
-  /** full — модель после правки; export — по кнопке: свежая правка её не вытесняет */
+  /** full — the model after an edit; export — by the button: a fresh edit never replaces it */
   kind: 'full' | 'export';
   state: AppState;
   resolution: number;
 }
 
 export interface BuildResult {
-  /** меш в миллиметрах */
+  /** the mesh in millimetres */
   mesh: SurfaceMesh;
   report: MeshReport;
-  /** доля свесов круче 60° */
+  /** the share of overhangs steeper than 60° */
   overhang: number;
 }
 

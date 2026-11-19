@@ -1,7 +1,8 @@
-// Базовые фигуры-носители: тело вращения, сфера, тор, суперэллипсоид,
-// supershape (суперформула Гилиса). Все, кроме тора, — «полярные» сетки:
-// v идёт по широте с маленьким отступом от полюсов, полюсные дырки закрывают
-// крышки-веера (см. assembleMesh). Тор замкнут по v (wrapV).
+// The base carrier shapes: a solid of revolution, a sphere, a torus, a
+// superellipsoid, a supershape (Gielis's superformula). All but the torus
+// are polar grids: v runs along the latitude with a small margin from the
+// poles, and fan caps close the holes at the poles (see assembleMesh). The
+// torus is closed in v (wrapV).
 
 import type { Grid } from './surface';
 import { sampleGrid, sampleTorusGrid } from './surface';
@@ -10,11 +11,11 @@ import type { Params } from './displace';
 export interface RevolveOptions {
   nu: number;
   nv: number;
-  /** высота в единицах профиля (z = t·height) */
+  /** the height in profile units (z = t·height) */
   height: number;
 }
 
-/** Тело вращения: профиль r(t) вокруг оси z. u — азимут, v = t. */
+/** A solid of revolution: the profile r(t) around the z axis. u is the azimuth, v = t. */
 export function revolveGrid(radiusFn: (t: number) => number, o: RevolveOptions): Grid {
   return sampleGrid(o.nu, o.nv, (u, v, out) => {
     const r = radiusFn(v);
@@ -31,7 +32,7 @@ export function isShapeId(x: string): x is ShapeId {
   return SHAPE_IDS.some((id) => id === x);
 }
 
-/** Дефолты параметров фигур = дефолты слайдеров UI-схемы (сверяется тестом). */
+/** The shapes' parameter defaults = the UI schema's slider defaults (a test checks). */
 export const DEFAULT_SHAPE_PARAMS: Record<ShapeId, Params> = {
   sphere: {},
   torus: { R: 0.35, r: 0.15 },
@@ -44,7 +45,7 @@ const num = (p: Params, k: string, d: number): number => (Number.isFinite(p[k]) 
 /** signed power: sign(x)·|x|^e */
 const spow = (x: number, e: number): number => Math.sign(x) * Math.pow(Math.abs(x), e);
 
-/** Суперформула Гилиса: r(φ) = (|cos(mφ/4)/a|^n2 + |sin(mφ/4)/b|^n3)^(−1/n1). */
+/** Gielis's superformula: r(φ) = (|cos(mφ/4)/a|^n2 + |sin(mφ/4)/b|^n3)^(−1/n1). */
 export function superformula(phi: number, m: number, n1: number, n2: number, n3: number): number {
   const t1 = Math.pow(Math.abs(Math.cos((m * phi) / 4)), n2);
   const t2 = Math.pow(Math.abs(Math.sin((m * phi) / 4)), n3);
@@ -56,20 +57,20 @@ export function superformula(phi: number, m: number, n1: number, n2: number, n3:
 
 export interface ShapeResult {
   grid: Grid;
-  /** z-экстент фигуры (для ModContext и графика) */
+  /** the shape's z extent (for ModContext and the graph) */
   height: number;
 }
 
-/** Широта с отступом от полюсов: дырки закрываются крышками. */
+/** The latitude with a margin from the poles: caps close the holes. */
 function latitude(v: number, nv: number): number {
   const delta = Math.PI / (2 * (nv + 2));
   return -Math.PI / 2 + delta + v * (Math.PI - 2 * delta);
 }
 
 /**
- * Фигура-носитель по id. Полярные фигуры отдают сетку с nv+1 рядами
- * (закрывать caps='both'), тор — wrapV-сетку без крышек. z сдвинут в
- * [0, height] (печатная конвенция, как у revolve).
+ * A carrier shape by id. Polar shapes give a grid of nv+1 rows (to close
+ * with caps='both'), the torus a wrapV grid with no caps. z is moved to
+ * [0, height] (the printing convention, as for revolve).
  */
 export function shapeGrid(id: ShapeId, p: Params, nu: number, nv: number): ShapeResult {
   switch (id) {
@@ -131,7 +132,7 @@ export function shapeGrid(id: ShapeId, p: Params, nu: number, nv: number): Shape
         out[1] = r1 * Math.sin(u) * r2 * Math.cos(th);
         out[2] = r2 * Math.sin(th);
       });
-      // нормировка: вписать в габарит ~1 и поднять z к нулю
+      // normalise: fit into a size of ~1 and lift z to zero
       let maxAbs = 1e-9;
       let zMin = Infinity;
       const pos = grid.positions;

@@ -1,11 +1,13 @@
-// Свесы для FDM-печати: доля поверхности, нависающей круче предела.
-// Своё у MathSculpt; проверка меша и сито экспорта — китовые (`maker-kit/3d/validate`).
+// Overhangs for FDM printing: the share of the surface hanging steeper than
+// a limit. MathSculpt's own; the mesh check and the export gate are the
+// kit's (`maker-kit/3d/validate`).
 
 import type { SurfaceMesh } from 'maker-kit/3d/mesh';
 
 /**
- * Доля площади, нависающей круче limitDeg от вертикали (плохо для FDM).
- * Грани у самого дна (первые слои на столе) не считаются.
+ * The share of the area hanging steeper than limitDeg from the vertical
+ * (bad for FDM). Faces at the very bottom (the first layers on the bed) do
+ * not count.
  */
 export function overhangFraction(mesh: Pick<SurfaceMesh, 'positions' | 'indices'>, limitDeg = 60): number {
   const { positions, indices } = mesh;

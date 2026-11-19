@@ -1,8 +1,8 @@
-// Карточка «Modulation»: пул пространственных LFO и маршруты LFO → параметр
-// карточки → глубина. Строки — китовые (`ui/controls`), маршруты — список
-// кита (`ui/listCard`, каждый открыт со своими строками, ✕ в шапке).
-// Свёрнута, пока маршрутов нет; разворачивается с первым. Бейдж ∿ ставится
-// на строку модулированного ползунка любой карточки.
+// The Modulation card: the pool of spatial LFOs and the routes LFO → a
+// card's parameter → depth. The rows are the kit's (`ui/controls`), the
+// routes the kit's list (`ui/listCard`, each open with its rows, ✕ in its
+// head). Folded while there are no routes; it unfolds with the first. The ∿
+// badge goes on the row of a modulated slider of any card.
 
 import { createCard } from 'maker-kit/ui/card';
 import type { ControlsHandle } from 'maker-kit/ui/controls';
@@ -62,8 +62,8 @@ export function renderModCard(container: HTMLElement, o: PanelOptions): ModCardH
   });
   card.body.append(list, add);
 
-  // Строки маршрута i всегда читают маршрут i: после удаления их узлы и
-  // ручки остаются верными и только показывают следующий маршрут.
+  // Route i's rows always read route i: after a removal their nodes and
+  // handles stay right and simply show the next route.
   const routes: { node: HTMLElement; handle: ControlsHandle<AppState> }[] = [];
   const routeBody = (index: number): HTMLElement => {
     let entry = routes[index];
@@ -104,7 +104,7 @@ export function renderModCard(container: HTMLElement, o: PanelOptions): ModCardH
   };
 }
 
-/** Бейджи ∿ на строках модулированных ползунков карточек. */
+/** The ∿ badges on the rows of the cards' modulated sliders. */
 function markModulated(state: AppState, t: Translate<Key>): void {
   const wanted = new Set(state.mod.routes.filter((route) => route.depth !== 0).map((route) => `p_${route.card}_${route.param}`));
   for (const badge of document.querySelectorAll('.mod-badge')) {

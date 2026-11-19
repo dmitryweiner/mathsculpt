@@ -1,4 +1,4 @@
-// Профили: непрерывность, положительность, прохождение через контрольные точки.
+// Profiles: continuity, positivity, passing through the control points.
 import {
   PROFILES,
   profileById,
@@ -12,8 +12,8 @@ import { buildMesh, defaultParams } from '../src/geo/build';
 import { validateMesh } from 'maker-kit/3d/validate';
 import { sanitizeState, stateToParams } from '../src/state/schema';
 
-describe('профили-пресеты', () => {
-  it.each(PROFILES.map((p) => [p.id] as const))('%s: r(t) конечен и положителен', (id) => {
+describe('the profiles', () => {
+  it.each(PROFILES.map((p) => [p.id] as const))('%s: r(t) is finite and positive', (id) => {
     const def = profileById(id);
     for (let i = 0; i <= 1000; i++) {
       const r = profileRadius(def, i / 1000);
@@ -23,14 +23,14 @@ describe('профили-пресеты', () => {
     }
   });
 
-  it.each(PROFILES.map((p) => [p.id] as const))('%s: проходит через контрольные точки', (id) => {
+  it.each(PROFILES.map((p) => [p.id] as const))('%s: passes through the control points', (id) => {
     const def = profileById(id);
     for (const pt of def.points) {
       expect(profileRadius(def, pt.t)).toBeCloseTo(pt.r, 6);
     }
   });
 
-  it('вне [0,1] — крайние значения', () => {
+  it('outside [0,1] — the end values', () => {
     const def = profileById('vase');
     expect(profileRadius(def, -1)).toBeCloseTo(def.points[0].r, 6);
     expect(profileRadius(def, 2)).toBeCloseTo(def.points[def.points.length - 1].r, 6);
@@ -43,28 +43,28 @@ describe('профили-пресеты', () => {
   });
 });
 
-describe('настройка формы профиля', () => {
-  it('дефолт (base=belly=neck=0) — множитель ровно 1 (golden не меняется)', () => {
+describe('the profile shape adjustment', () => {
+  it('the default (base=belly=neck=0) gives a factor of exactly 1 (the golden geometry holds)', () => {
     for (let i = 0; i <= 20; i++) {
       expect(profileShapeFactor(DEFAULT_PROFILE_SHAPE, i / 20)).toBe(1);
     }
   });
 
-  it('belly расширяет середину, почти не трогая края', () => {
+  it('belly widens the middle, hardly touching the ends', () => {
     const p = { base: 0, belly: 0.5, neck: 0 };
-    expect(profileShapeFactor(p, 0.5)).toBeCloseTo(1.5, 6); // пик пуза
-    expect(profileShapeFactor(p, 0)).toBeCloseTo(1, 6); // основание
-    expect(profileShapeFactor(p, 1)).toBeCloseTo(1, 6); // горлышко
+    expect(profileShapeFactor(p, 0.5)).toBeCloseTo(1.5, 6); // the belly's peak
+    expect(profileShapeFactor(p, 0)).toBeCloseTo(1, 6); // the base
+    expect(profileShapeFactor(p, 1)).toBeCloseTo(1, 6); // the neck
   });
 
-  it('base расширяет низ, neck — верх', () => {
+  it('base widens the bottom, neck the top', () => {
     expect(profileShapeFactor({ base: 0.4, belly: 0, neck: 0 }, 0)).toBeCloseTo(1.4, 6);
     expect(profileShapeFactor({ base: 0, belly: 0, neck: 0.4 }, 1)).toBeCloseTo(1.4, 6);
-    // и не влияют на противоположный край
+    // and they leave the opposite end alone
     expect(profileShapeFactor({ base: 0.4, belly: 0, neck: 0 }, 1)).toBeCloseTo(1, 6);
   });
 
-  it('отрицательные значения сужают, радиус остаётся положительным', () => {
+  it('negative values narrow, the radius stays positive', () => {
     const def = profileById('vase');
     const shape = { base: -0.6, belly: -0.6, neck: -0.6 };
     for (let i = 0; i <= 100; i++) {
@@ -82,7 +82,7 @@ describe('настройка формы профиля', () => {
   });
 });
 
-describe('форма профиля в конвейере и состоянии', () => {
+describe('the profile shape in the pipeline and the state', () => {
   const build = (shape: Record<string, number>) => {
     const p = defaultParams();
     p.profile = 'vase';
@@ -93,7 +93,7 @@ describe('форма профиля в конвейере и состоянии'
     return buildMesh(p);
   };
 
-  it('belly>0 расширяет вазу (растёт bbox по xy и объём), меш валиден', () => {
+  it('belly>0 widens the vase (the xy bbox and the volume grow), the mesh is valid', () => {
     const plain = validateMesh(build({}));
     const fat = validateMesh(build({ belly: 0.6 }));
     expect(fat.watertight).toBe(true);
@@ -104,14 +104,14 @@ describe('форма профиля в конвейере и состоянии'
     expect(fat.volume).toBeGreaterThan(plain.volume);
   });
 
-  it('neck<0 сужает горлышко, меш остаётся валидным', () => {
+  it('neck<0 narrows the neck, the mesh stays valid', () => {
     const r = validateMesh(build({ neck: -0.5 }));
     expect(r.watertight).toBe(true);
     expect(r.finite).toBe(true);
     expect(r.volume).toBeGreaterThan(0);
   });
 
-  it('sanitize/stateToParams: только известные ключи profileShape', () => {
+  it('sanitize/stateToParams: only the known profileShape keys', () => {
     const out = sanitizeState({ profileShape: { belly: 0.5, junk: NaN } });
     expect(out?.profileShape?.belly).toBe(0.5);
     expect(out?.profileShape?.junk).toBeUndefined();

@@ -1,5 +1,5 @@
-// Вещественные сферические гармоники Yₗₘ(θ, φ). Нормировка ×√(4π):
-// Y₀₀ = 1, пики остальных — порядка единицы (удобно для слайдера амплитуды).
+// Real spherical harmonics Yₗₘ(θ, φ). Normalised ×√(4π): Y₀₀ = 1, the
+// others peak at about one (handy for the amplitude slider).
 
 function factorial(n: number): number {
   let f = 1;
@@ -7,7 +7,7 @@ function factorial(n: number): number {
   return f;
 }
 
-/** Присоединённый полином Лежандра P_l^m(x), m ≥ 0, рекуррентно. */
+/** The associated Legendre polynomial P_l^m(x), m ≥ 0, by recurrence. */
 export function legendreP(l: number, m: number, x: number): number {
   // P_m^m = (−1)^m (2m−1)!! (1−x²)^{m/2}
   let pmm = 1;
@@ -33,8 +33,8 @@ export function legendreP(l: number, m: number, x: number): number {
 }
 
 /**
- * √(4π)·Yₗₘ(θ, φ) в вещественной форме: m>0 — cos(mφ), m<0 — sin(|m|φ).
- * |m| обрезается до l. phase сдвигает φ.
+ * √(4π)·Yₗₘ(θ, φ) in the real form: m>0 — cos(mφ), m<0 — sin(|m|φ).
+ * |m| is cut to l. phase shifts φ.
  */
 export function sphericalHarmonic(l: number, m: number, theta: number, phi: number, phase = 0): number {
   const ll = Math.max(0, Math.round(l));

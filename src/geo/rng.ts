@@ -1,5 +1,5 @@
-// Детерминированный PRNG (порт из formula-synth): один и тот же сид —
-// одна и та же последовательность на любой платформе.
+// A deterministic PRNG (from formula-synth): the same seed gives the same
+// sequence on any platform.
 
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;

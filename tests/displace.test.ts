@@ -1,4 +1,4 @@
-// Смещения: формулы, замкнутость по шву, детерминизм, применение стека.
+// Displacements: the formulas, a closed seam, determinism, applying the stack.
 import { makeDisplace, applyDisplacements, DISPLACE_IDS, DEFAULT_DISPLACE_PARAMS } from '../src/geo/displace';
 import { sampleGrid } from '../src/geo/surface';
 import { gridNormals } from '../src/geo/normals';
@@ -7,8 +7,8 @@ import { sphericalHarmonic, legendreP } from '../src/geo/harmonics';
 
 const TWO_PI = 2 * Math.PI;
 
-describe('свойства всех смещений', () => {
-  it.each([...DISPLACE_IDS])('%s: конечно и ограничено ~amp на дефолтах', (id) => {
+describe('properties of every displacement', () => {
+  it.each([...DISPLACE_IDS])('%s: finite and bounded by ~amp at the defaults', (id) => {
     const p = DEFAULT_DISPLACE_PARAMS[id];
     const f = makeDisplace(id, p);
     for (let i = 0; i < 400; i++) {
@@ -16,12 +16,12 @@ describe('свойства всех смещений', () => {
       const v = Math.floor(i / 20) / 20;
       const d = f(u, v, 0.4 * Math.cos(u), 0.4 * Math.sin(u), v);
       expect(Number.isFinite(d)).toBe(true);
-      // Yₗₘ и fBm могут слегка превышать amp; допуск ×3
+      // Yₗₘ and fBm may slightly exceed amp; a tolerance of ×3
       expect(Math.abs(d)).toBeLessThanOrEqual(p.amp * 3);
     }
   });
 
-  it.each([...DISPLACE_IDS])('%s: шов замкнут — d(0,v) = d(2π,v)', (id) => {
+  it.each([...DISPLACE_IDS])('%s: the seam is closed — d(0,v) = d(2π,v)', (id) => {
     const f = makeDisplace(id, DEFAULT_DISPLACE_PARAMS[id]);
     for (const v of [0, 0.3, 0.77, 1]) {
       const p0 = [0.4, 0, v];
@@ -30,27 +30,27 @@ describe('свойства всех смещений', () => {
   });
 });
 
-describe('ripples и lissajous', () => {
+describe('ripples and lissajous', () => {
   it('ripples: A·sin(a·u + b·2π·v + φ)', () => {
     const f = makeDisplace('ripples', { amp: 0.5, freqU: 3, freqV: 2, phase: 0.7 });
     expect(f(1.1, 0.3, 0, 0, 0)).toBeCloseTo(0.5 * Math.sin(3 * 1.1 + 2 * TWO_PI * 0.3 + 0.7), 9);
   });
 
-  it('lissajous: произведение синусов', () => {
+  it('lissajous: a product of sines', () => {
     const f = makeDisplace('lissajous', { amp: 1, freqU: 2, freqV: 1, phaseU: 0.2, phaseV: 0.4 });
     expect(f(0.9, 0.6, 0, 0, 0)).toBeCloseTo(Math.sin(2 * 0.9 + 0.2) * Math.sin(TWO_PI * 0.6 + 0.4), 9);
   });
 });
 
-describe('сферические гармоники', () => {
-  it('P_l^m: известные значения', () => {
+describe('spherical harmonics', () => {
+  it('P_l^m: known values', () => {
     expect(legendreP(0, 0, 0.5)).toBeCloseTo(1, 9);
     expect(legendreP(1, 0, 0.5)).toBeCloseTo(0.5, 9);
     expect(legendreP(1, 1, 0.5)).toBeCloseTo(-Math.sqrt(0.75), 9);
     expect(legendreP(2, 0, 0.5)).toBeCloseTo(0.5 * (3 * 0.25 - 1), 9);
   });
 
-  it('Y00·√4π = 1 всюду', () => {
+  it('Y00·√4π = 1 everywhere', () => {
     for (const [th, ph] of [
       [0.1, 0],
       [1.5, 2],
@@ -60,18 +60,18 @@ describe('сферические гармоники', () => {
     }
   });
 
-  it('|m| обрезается до l, дробные l/m округляются', () => {
+  it('|m| is cut to l, fractional l/m are rounded', () => {
     expect(sphericalHarmonic(2, 5, 1, 1)).toBeCloseTo(sphericalHarmonic(2, 2, 1, 1), 9);
     expect(sphericalHarmonic(2.4, 1.1, 1, 1)).toBeCloseTo(sphericalHarmonic(2, 1, 1, 1), 9);
   });
 
-  it('m<0 — sin-форма: ноль при φ=0', () => {
+  it('m<0 is the sine form: zero at φ=0', () => {
     expect(sphericalHarmonic(3, -2, 1.2, 0)).toBeCloseTo(0, 9);
   });
 });
 
-describe('simplex fBm-шум', () => {
-  it('детерминизм: одинаковый сид → одинаковое поле', () => {
+describe('simplex fBm noise', () => {
+  it('determinism: the same seed → the same field', () => {
     const a = simplex3(42);
     const b = simplex3(42);
     for (let i = 0; i < 50; i++) {
@@ -82,7 +82,7 @@ describe('simplex fBm-шум', () => {
     }
   });
 
-  it('разные сиды → разные поля', () => {
+  it('different seeds → different fields', () => {
     const a = simplex3(1);
     const b = simplex3(2);
     let differs = false;
@@ -92,7 +92,7 @@ describe('simplex fBm-шум', () => {
     expect(differs).toBe(true);
   });
 
-  it('выход ограничен [−1.2, 1.2] и не константен', () => {
+  it('the output is bounded by [−1.2, 1.2] and not constant', () => {
     const f = fbm3(simplex3(7), 4);
     let min = Infinity,
       max = -Infinity;
@@ -108,7 +108,7 @@ describe('simplex fBm-шум', () => {
 });
 
 describe('waves', () => {
-  it('меандр (shape=2): значения только ±amp', () => {
+  it('square (shape=2): values only ±amp', () => {
     const f = makeDisplace('waves', { amp: 0.4, shape: 2, freqU: 6, freqV: 0, phase: 0 });
     for (let i = 0; i < 100; i++) {
       const d = f((i / 100) * TWO_PI, 0.5, 0, 0, 0);
@@ -116,13 +116,13 @@ describe('waves', () => {
     }
   });
 
-  it('пила (shape=1): линейный рост внутри периода', () => {
+  it('saw (shape=1): a linear rise within a period', () => {
     const f = makeDisplace('waves', { amp: 1, shape: 1, freqU: 1, freqV: 0, phase: 0 });
     expect(f(0, 0, 0, 0, 0)).toBeCloseTo(-1, 9);
     expect(f(Math.PI, 0, 0, 0, 0)).toBeCloseTo(0, 9);
   });
 
-  it('треугольник (shape=0): пик на краях периода', () => {
+  it("triangle (shape=0): peaks at the period's edges", () => {
     const f = makeDisplace('waves', { amp: 1, shape: 0, freqU: 1, freqV: 0, phase: 0 });
     expect(f(0, 0, 0, 0, 0)).toBeCloseTo(1, 9);
     expect(f(Math.PI, 0, 0, 0, 0)).toBeCloseTo(-1, 9);
@@ -137,14 +137,14 @@ describe('applyDisplacements', () => {
       out[2] = v;
     });
 
-  it('пустой стек — сетка не меняется', () => {
+  it('an empty stack leaves the grid as it is', () => {
     const g = unitCylinder();
     const before = Array.from(g.positions);
     applyDisplacements(g, gridNormals(g), []);
     expect(Array.from(g.positions)).toEqual(before);
   });
 
-  it('константное смещение d=c сдвигает вдоль нормали на c', () => {
+  it('a constant displacement d=c moves along the normal by c', () => {
     const g = unitCylinder();
     applyDisplacements(g, gridNormals(g), [{ fn: () => 0.5, weight: 1 }]);
     const k = (2 * 16 + 3) * 3;
@@ -152,7 +152,7 @@ describe('applyDisplacements', () => {
     expect(r).toBeCloseTo(1.5, 5);
   });
 
-  it('веса складываются: w1·d1 + w2·d2', () => {
+  it('weights add up: w1·d1 + w2·d2', () => {
     const a = unitCylinder();
     applyDisplacements(a, gridNormals(a), [
       { fn: () => 0.2, weight: 1 },
@@ -163,7 +163,7 @@ describe('applyDisplacements', () => {
     expect(Array.from(a.positions)).toEqual(Array.from(b.positions));
   });
 
-  it('смещению передаётся позиция точки базовой поверхности', () => {
+  it("a displacement gets the base surface point's position", () => {
     const g = unitCylinder();
     const seen: number[][] = [];
     applyDisplacements(g, gridNormals(g), [{ fn: (_u, _v, px, py, pz) => (seen.push([px, py, pz]), 0), weight: 1 }]);

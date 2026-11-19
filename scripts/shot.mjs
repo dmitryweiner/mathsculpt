@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Скриншоты превью: по одному на каждый профиль → ./shots (или --out <dir>).
-// Сервер и браузер — китовой обвязки (scripts/lib/harness.mjs).
+// Preview screenshots: one per profile → ./shots (or --out <dir>).
+// The server and the browser are the kit's harness (scripts/lib/harness.mjs).
 //
-//   node scripts/shot.mjs                 # dev-сервер (:5287)
-//   node scripts/shot.mjs --out shots/p   # в другую папку
+//   node scripts/shot.mjs                 # the dev server (:5287)
+//   node scripts/shot.mjs --out shots/p   # into another folder
 
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';

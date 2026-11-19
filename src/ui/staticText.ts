@@ -1,8 +1,8 @@
-// Тексты статической разметки index.html и язык с направлением страницы.
-// В самом HTML они английские — их видно до запуска скрипта; здесь их
-// переписывают на текущий язык по атрибутам: `data-i18n` — текст,
-// `data-i18n-title` — подсказка, `data-i18n-aria` — aria-label.
-// Неизвестный ключ оставляет текст как есть.
+// The texts of index.html's static markup, and the page's language and
+// direction. In the HTML itself they are English — seen before the script
+// runs; here they are rewritten into the current language by attributes:
+// `data-i18n` the text, `data-i18n-title` the tooltip, `data-i18n-aria` the
+// aria-label. An unknown key leaves the text as it is.
 
 import { direction, hasKey, lang, t } from '../i18n';
 
@@ -23,7 +23,7 @@ const ATTRIBUTES: readonly [string, (node: HTMLElement, text: string) => void][]
 ];
 
 export function applyStaticText(root: Document): void {
-  // иврит зеркалит всю страницу; CSS — только логическими свойствами
+  // Hebrew mirrors the whole page; the CSS uses logical properties only
   root.documentElement.lang = lang();
   root.documentElement.dir = direction(lang());
   root.title = t('app.title');

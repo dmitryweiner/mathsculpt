@@ -1,14 +1,15 @@
-// Нормали по сетке — направление смещений. Шов u=0/2π учитывается
-// автоматически: сетка замкнута по u индексной арифметикой. Нормали готового
-// меша (для вида и STL) — китовые (`maker-kit/3d/mesh`, `meshNormals`).
+// Normals over the grid — the direction of the displacements. The u=0/2π
+// seam is taken care of by itself: the grid is closed in u by index
+// arithmetic. A finished mesh's normals (for the view and the STL) are the
+// kit's (`maker-kit/3d/mesh`, `meshNormals`).
 
 import type { Grid } from './surface';
 import { gridRows } from './surface';
 
 /**
- * Нормали в узлах сетки центральными разностями:
- * n = ∂P/∂u × ∂P/∂v (наружу при обходе u против часовой и v вверх).
- * На краях v — односторонние разности. Вырожденные — fallback (0,0,±1).
+ * Normals at the grid's nodes by central differences:
+ * n = ∂P/∂u × ∂P/∂v (outwards with u counter-clockwise and v up). One-sided
+ * differences at the v edges. Degenerate ones fall back to (0,0,±1).
  */
 export function gridNormals(grid: Grid): Float32Array {
   const { nu, nv, positions } = grid;

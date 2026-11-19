@@ -1,6 +1,6 @@
-// Golden-тесты геометрии: подвыборка вершин + объём фиксируют «текущее
-// состояние кода» для каждого профиля с дефолтными ripples.
-// Регенерация эталонов: UPDATE_GOLDEN=1 npm test
+// Golden geometry tests: a sample of vertices + the volume pin the code's
+// current output for every profile with the default ripples.
+// Regenerate the references: UPDATE_GOLDEN=1 npx vitest run tests/golden.test.ts
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -33,7 +33,7 @@ function snapshot(profile: string): GoldenEntry {
   };
 }
 
-describe('golden-геометрия', () => {
+describe('golden geometry', () => {
   const golden: Record<string, GoldenEntry> = {};
   if (process.env.UPDATE_GOLDEN) {
     for (const id of PROFILE_IDS) golden[id] = snapshot(id);
@@ -42,17 +42,19 @@ describe('golden-геометрия', () => {
     Object.assign(golden, JSON.parse(readFileSync(GOLDEN_PATH, 'utf8')));
   }
 
-  it('эталон есть', () => {
-    expect(existsSync(GOLDEN_PATH), `нет эталона ${GOLDEN_PATH}; сгенерируйте: UPDATE_GOLDEN=1 npm test`).toBe(true);
+  it('the reference exists', () => {
+    expect(existsSync(GOLDEN_PATH), `no reference ${GOLDEN_PATH}; generate it: UPDATE_GOLDEN=1 npx vitest run tests/golden.test.ts`).toBe(
+      true,
+    );
   });
 
-  it.each(PROFILE_IDS.map((id) => [id] as const))('%s совпадает с эталоном', (id) => {
+  it.each(PROFILE_IDS.map((id) => [id] as const))('%s matches the reference', (id) => {
     const ref = golden[id];
-    expect(ref, `в эталоне нет профиля ${id}`).toBeDefined();
+    expect(ref, `the reference has no profile ${id}`).toBeDefined();
     const got = snapshot(id);
     expect(got.positionsLength).toBe(ref.positionsLength);
     expect(got.indicesLength).toBe(ref.indicesLength);
-    // допуск на разницу Math.sin между версиями V8
+    // a tolerance for Math.sin differing between V8 versions
     expect(Math.abs(got.volume - ref.volume)).toBeLessThan(1e-6);
     expect(got.sample.length).toBe(ref.sample.length);
     for (let i = 0; i < ref.sample.length; i++) {

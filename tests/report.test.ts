@@ -1,6 +1,6 @@
-// Вердикты меша кодами сообщений: сито экспорта кита (блокировки и
-// предупреждения) плюс свои — свесы и амплитуда больше радиуса; строка
-// статуса словами словаря.
+// A mesh's verdicts as message codes: the kit's export gate (blockers and
+// warnings) plus the app's own — overhangs and an amplitude above the
+// radius; the status line in the dictionary's words.
 import { validateMesh } from 'maker-kit/3d/validate';
 import type { MeshReport } from 'maker-kit/3d/validate';
 import { buildMesh } from '../src/geo/build';
@@ -24,30 +24,30 @@ const SOLID: MeshReport = {
 const codes = (state: AppState, report: MeshReport, overhang = 0): string[] =>
   meshVerdicts(report, buildParamsOf(state), overhang).map((v) => `${v.severity}:${v.message.code}`);
 
-describe('вердикты меша', () => {
-  it('сплошная модель по умолчанию строится без замечаний', () => {
+describe('mesh verdicts', () => {
+  it('the default solid model builds with no remarks', () => {
     const params = { ...buildParamsOf(defaultState()), nu: 48, nv: 48 };
     expect(meshVerdicts(validateMesh(buildMesh(params)), params, 0)).toEqual([]);
   });
 
-  it('незамкнутое тело, которое должно быть сплошным, — блокировка кита', () => {
+  it('an open body that should be solid is a kit blocker', () => {
     expect(codes(defaultState(), { ...SOLID, watertight: false })).toEqual(['bad:kit.mesh.open']);
   });
 
-  it('оболочка нулевой толщины может быть незамкнутой', () => {
+  it('a zero-thickness shell may be open', () => {
     const shell = { ...defaultState(), caps: 'bottom' as const, wallMm: 0 };
     expect(shouldBeClosed(buildParamsOf(shell))).toBe(false);
     expect(codes(shell, { ...SOLID, watertight: false })).toEqual([]);
     expect(shouldBeClosed(buildParamsOf({ ...shell, wallMm: 2 }))).toBe(true);
   });
 
-  it('свесы круче 60° больше 2 % — предупреждение с долей', () => {
+  it('overhangs steeper than 60° over 2 % are a warning with the share', () => {
     const [verdict] = meshVerdicts(SOLID, buildParamsOf(defaultState()), 0.05);
     expect(verdict).toEqual({ severity: 'warn', message: { code: 'warn.overhang', params: { pct: 5 } } });
     expect(codes(defaultState(), SOLID, 0.02)).toEqual([]);
   });
 
-  it('амплитуда смещений больше радиуса — предупреждение о самопересечении', () => {
+  it('a displacement amplitude above the radius warns of self-intersection', () => {
     const base = defaultState();
     const big = {
       ...base,
@@ -60,26 +60,26 @@ describe('вердикты меша', () => {
     expect(codes(big, SOLID)).toContain('warn:warn.amplitude');
   });
 
-  it('блокировки впереди предупреждений', () => {
+  it('blockers before warnings', () => {
     const severities = meshVerdicts({ ...SOLID, finite: false }, buildParamsOf(defaultState()), 0.5).map((v) => v.severity);
     expect(severities).toEqual(['bad', 'warn']);
   });
 });
 
-describe('строка статуса', () => {
-  it('превью сплошной модели', () => {
+describe('the status line', () => {
+  it('the preview of a solid model', () => {
     expect(statusText(SOLID, buildParamsOf(defaultState()), { resolution: null, ms: 9.6 }, t)).toBe(
       '18.6k triangles · watertight ✓ · preview · 10 ms',
     );
   });
 
-  it('полная сборка незамкнутого тела', () => {
+  it('the full build of an open body', () => {
     expect(statusText({ ...SOLID, watertight: false }, buildParamsOf(defaultState()), { resolution: 256, ms: 83 }, t)).toBe(
       '18.6k triangles · NOT watertight ✗ · full 256×256 · 83 ms',
     );
   });
 
-  it('оболочка', () => {
+  it('a shell', () => {
     const shell = buildParamsOf({ ...defaultState(), caps: 'bottom', wallMm: 0 });
     expect(statusText(SOLID, shell, { resolution: null, ms: 5 }, t)).toBe('18.6k triangles · open top (zero-wall shell) · preview · 5 ms');
   });

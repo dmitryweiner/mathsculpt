@@ -1,7 +1,8 @@
-// Панель на контролах кита: строки «Shape», карточки носителя (видна только
-// карточка выбранного), карточки смещений и деформеров (включение — первой
-// строкой-галочкой внутри карточки, правило кита) и карточка модуляции.
-// Карточки рисуются один раз; правка из любого места — `sync(state)`.
+// The panel on the kit's controls: the Shape rows, the carrier cards (only
+// the chosen carrier's shows), the displacement and deformer cards (the
+// switch is the first row inside the card, the kit's rule) and the
+// modulation card. Cards are drawn once; an edit from anywhere is
+// `sync(state)`.
 
 import { createCard } from 'maker-kit/ui/card';
 import type { CardHandle } from 'maker-kit/ui/card';
@@ -31,12 +32,12 @@ export interface PanelHandle {
   sync(state: AppState): void;
 }
 
-/** Какая карточка носителя относится к профилю: настройка формы — к пресет-профилям, остальные — к своему id. */
+/** Which carrier card belongs to the profile: the profile shape to the profiles, the others to their own id. */
 function carrierShown(def: CardDef, profile: string): boolean {
   return def.id === PROFILE_SHAPE_CARD.id ? isProfileId(profile) : def.id === profile;
 }
 
-/** Рисует панель в свои места, начисто: после смены языка — заново (свёрнутость карточек — `snapshotCards` кита). */
+/** Draws the panel into its places from clean: again after a language switch (which cards are folded — the kit's `snapshotCards`). */
 export function renderPanel(hosts: PanelHosts, o: PanelOptions): PanelHandle {
   for (const host of Object.values(hosts)) host.replaceChildren();
   const state = o.read();

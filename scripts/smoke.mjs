@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-// Браузерный смоук: то, что нельзя проверить в vitest — Three.js/WebGL,
-// воркер, реальные клики по панели, выгрузка файла.
+// The browser smoke: what vitest cannot check — Three.js/WebGL, the worker,
+// real clicks in the panel, a downloaded file.
 //
-//   node scripts/smoke.mjs                    # dev-сервер (:5287)
-//   node scripts/smoke.mjs --preview          # прод-сборка (пересобирается, vite preview :4287)
-//   node scripts/smoke.mjs --shots shots      # + кадр в конце каждого шага
+//   node scripts/smoke.mjs                    # the dev server (:5287)
+//   node scripts/smoke.mjs --preview          # the production build (rebuilt, vite preview :4287)
+//   node scripts/smoke.mjs --shots shots      # + a frame at the end of every step
 //
-// Шаги — китовой обвязки (`app.step`): каждый в свежей странице и чистом
-// хранилище, ошибки консоли помечены шагом. Любая ошибка консоли/страницы
-// или упавший шаг → ненулевой код выхода (годится для CI); провал оставляет
-// кадр `smoke-fail.png` (в --shots или во временной папке). Браузер — в
-// en-US: проверки читают английский текст; языки проверяет свой шаг.
+// The steps are the kit's harness (`app.step`): each on a fresh page and
+// clean storage, console errors tagged with the step. Any console or page
+// error or a failed step → a non-zero exit code (good for CI); a failure
+// leaves a frame, `smoke-fail.png` (in --shots or the temp dir). The
+// browser is en-US: the checks read English text; a step of its own checks
+// the languages.
 
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -25,8 +26,8 @@ const app = await launch({ preview: flags.has('preview') });
 let shotNumber = 0;
 
 /**
- * Шаг в свежей странице: `fn(page)`; с --shots — кадр в конце, при провале —
- * всегда (`smoke-fail.png`).
+ * A step on a fresh page: `fn(page)`; with --shots a frame at its end, and
+ * on a failure always (`smoke-fail.png`).
  */
 async function step(name, fn, open = {}) {
   await app.step(name, async () => {
@@ -54,7 +55,7 @@ async function expectWatertight(page, what) {
   check(status.includes('watertight ✓'), `${what}: status "${status}"`);
 }
 
-/** Раскрывает свёрнутую карточку, где лежит контрол: в свёрнутой его не видно. */
+/** Unfolds the folded card holding a control: in a folded one it is not visible. */
 async function reveal(page, id) {
   await page.evaluate((target) => {
     const card = document.getElementById(target)?.closest('.fcard.collapsed');
@@ -62,7 +63,7 @@ async function reveal(page, id) {
   }, id);
 }
 
-/** Ползунок как отпущенный: кадр (input) и законченная правка (change) — шаг отмены. */
+/** A slider as if released: a frame (input) and a finished edit (change) — one undo step. */
 async function setSlider(page, id, value) {
   await reveal(page, id);
   const slider = page.locator(`#${id}`);
@@ -71,7 +72,7 @@ async function setSlider(page, id, value) {
   await slider.dispatchEvent('change');
 }
 
-/** Высота модели в STL, мм: размах z по вершинам двоичного файла. */
+/** The model's height in an STL, mm: the z span over the binary file's vertices. */
 function stlHeight(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const count = view.getUint32(80, true);
@@ -99,7 +100,7 @@ await app.run(
       }
     });
 
-    // галочка — первой строкой внутри карточки (#p_<карточка>_on)
+    // the switch is the first row inside the card (#p_<card>_on)
     await step('every card switches on and off', async (page) => {
       const cardIds = await page.$$eval('#displaceCards .fcard, #deformCards .fcard', (els) => els.map((e) => e.id.replace('card_', '')));
       check(cardIds.length >= 30, `only ${cardIds.length} cards`);
@@ -113,7 +114,7 @@ await app.run(
       }
     });
 
-    // из диалога кита; имя открытого — на кнопке пресетов
+    // from the kit's dialog; the open one's name is on the presets button
     await step('every built-in preset opens from the dialog', async (page) => {
       await page.locator('#presetBtn').click();
       const refs = await page.$$eval('#presetList .preset-row[data-ref^="b:"]', (els) => els.map((e) => e.dataset.ref));
@@ -144,7 +145,7 @@ await app.run(
       check(await page.locator('#redoBtn').isDisabled(), 'redo is still enabled at the newest step');
     });
 
-    // 📄 Новое: модель по умолчанию под именем «New model»; ↶ возвращает прежнюю
+    // 📄 New: the default model named "New model"; ↶ brings the previous one back
     await step('📄 New opens the default model, one undo step', async (page) => {
       await page.locator('#presetBtn').click();
       await page.locator('#presetList .preset-row[data-ref="b:gyroid-sphere"] .preset-pick').click();
@@ -163,7 +164,7 @@ await app.run(
       check((await page.locator('#shape_profile').inputValue()) === 'sphere', 'undo did not bring the sphere back');
     });
 
-    // 💾: пресет под именем из prompt — в «My presets», и после перезагрузки тоже
+    // 💾: a preset under the prompt's name is in "My presets", after a reload too
     await step('a saved preset survives a reload', async (page) => {
       page.once('dialog', (dialog) => dialog.accept('Smoke preset'));
       await page.locator('#saveBtn').click();
@@ -175,7 +176,7 @@ await app.run(
       check(mine.includes('Smoke preset'), `my presets: ${JSON.stringify(mine)}`);
     });
 
-    // модель в браузере: после перезагрузки — та же модель, тот же пресет на кнопке и ●
+    // the model in the browser: after a reload the same model, the same preset on the button and ●
     await step('the model survives a reload', async (page) => {
       await page.locator('#presetBtn').click();
       await page.locator('#presetList .preset-row[data-ref="b:gyroid-sphere"] .preset-pick').click();
@@ -193,7 +194,7 @@ await app.run(
       check(await page.locator('#presetBtn').evaluate((node) => node.classList.contains('changed')), 'the ● is gone after a reload');
     });
 
-    // хранилище заблокировано (приватное окно): баннер кита говорит, что модель не хранится
+    // blocked storage (a private window): the kit's banner says the model is not kept
     await step(
       "blocked storage: the kit's banner says the model is not kept",
       async (page) => {
@@ -212,7 +213,7 @@ await app.run(
       },
     );
 
-    // ⬇️ файл проекта и 📂 обратно: модель и данное имя; чужой JSON — отказ словами кита
+    // ⬇️ a project file and 📂 back: the model and the given name; a foreign JSON is refused in the kit's words
     await step('the project file: ⬇️ saves, 📂 opens it back, a foreign file is refused', async (page) => {
       await page.locator('#presetBtn').click();
       await page.locator('#presetList .preset-row[data-ref="b:gyroid-sphere"] .preset-pick').click();
@@ -245,7 +246,7 @@ await app.run(
       check((await page.locator('#shape_profile').inputValue()) === 'sphere', 'a foreign file changed the model');
     });
 
-    // открытый верх: wall=0 → оболочка, wall>0 → watertight-солид
+    // open top: wall=0 → a shell, wall>0 → a watertight solid
     await step('open top: a shell, then a hollow vessel with a wall', async (page) => {
       await page.selectOption('#shape_caps', 'bottom');
       await page.waitForTimeout(200);
@@ -262,13 +263,13 @@ await app.run(
       check(await page.locator('#shape_wall').isHidden(), 'the wall row is shown in solid mode');
     });
 
-    // полная сборка в воркере: статус со временем показывает «full N×N»
+    // the full build in the worker: in time the status says "full N×N"
     await step('the worker builds the full mesh', async (page) => {
       await page.waitForSelector('#status[data-build="full"]', { timeout: 15000 });
       await expectWatertight(page, 'full build');
     });
 
-    // настройка формы видна у пресет-профиля и скрыта у Фурье; Фурье — своя карточка
+    // the profile shape card shows for a profile and hides for Fourier; Fourier has a card of its own
     await step('the profile shape and Fourier cards', async (page) => {
       await page.selectOption('#shape_profile', 'vase');
       await page.waitForTimeout(250);
@@ -292,7 +293,7 @@ await app.run(
       await expectWatertight(page, 'with a route');
     });
 
-    // настоящий файл: двоичный STL, треугольники есть, высота — заданные мм
+    // a real file: a binary STL with triangles, its height the set mm
     await step('downloads a real STL in millimetres', async (page) => {
       await setSlider(page, 'shape_height', '150');
       await page.waitForTimeout(300);
@@ -304,8 +305,8 @@ await app.run(
       check(Math.abs(height - 150) < 0.01, `the STL is ${height} mm tall, 150 expected`);
     });
 
-    // браузер на русском открывает русский; 🌐 переключает, выбор переживает
-    // перезагрузку; иврит зеркалит страницу (панель справа)
+    // a browser in Russian opens Russian; 🌐 switches, the choice survives a
+    // reload; Hebrew mirrors the page (the panel on the right)
     await step(
       'languages: Russian by the browser, Hebrew mirrored, the choice kept',
       async (page) => {
@@ -326,12 +327,12 @@ await app.run(
       { locale: 'ru-RU' },
     );
 
-    // широкий экран: панель рядом с видом, ничего не уезжает вбок
+    // a wide screen: the panel beside the view, nothing scrolls sideways
     await step('desktop: no sideways scroll', async (page) => {
       check((await horizontalOverflow(page)) === 0, `the page scrolls sideways by ${await horizontalOverflow(page)} px`);
     });
 
-    // телефон: панель — нижний лист кита; ручка закрывает, «Settings» открывает
+    // a phone: the panel is the kit's bottom sheet; its handle closes it, "Settings" opens it
     await step(
       'phone: the sheet closes and opens, no sideways scroll',
       async (page) => {
@@ -347,9 +348,9 @@ await app.run(
       { viewport: VIEWPORTS.phone },
     );
 
-    // только сборка: у dev-сервера нет сервис-воркера (_conventions/pwa.md)
+    // the build only: the dev server has no service worker (_conventions/pwa.md)
     if (flags.has('preview')) {
-      // офлайн после первого визита: страница, воркер сборки и выгрузка STL — из кэша
+      // offline after a first visit: the page, the build worker and an STL export, all from the cache
       await app.step('works offline after the first visit: the page, the worker, an STL', async () => {
         const { page, context } = await offline(app, {
           locale: 'en-US',
@@ -366,11 +367,11 @@ await app.run(
         }
       });
 
-      // новая версия доходит до открытой страницы: изменённый sw.js — так выглядит деплой для браузера
+      // a new version reaches an open page: a changed sw.js is what a deploy looks like to the browser
       await app.step('a new deploy reloads a page already open', async () => {
         const { page, context } = await app.open({ locale: 'en-US', viewport: VIEWPORTS.desktop });
         try {
-          // воркер уже встал на прошлом шаге (иначе прогон кончился бы там): ожидание не повиснет
+          // the worker got ready in the step before (else the run would have ended there): this wait cannot hang
           await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
           await page.evaluate(() => {
             window.oldPage = true;
@@ -380,7 +381,7 @@ await app.run(
           appendFileSync(worker, `\n// deploy ${Date.now()}\n`);
           try {
             const reloaded = page.waitForEvent('load', { timeout: 10000 }).catch(() => null);
-            // что делает телефон, когда человек возвращается на усыплённую страницу
+            // what a phone does when the person returns to a suspended page
             await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
             check((await reloaded) !== null, 'the open page never switched to the new version');
             check((await page.evaluate(() => window.oldPage)) === undefined, 'the page was not reloaded');

@@ -1,9 +1,9 @@
-// Модель в браузере — запись кита (`core/storage`): модель, открытый пресет
-// и данное файлу имя переживают перезагрузку. Нужна PWA: новая версия
-// приходит перезагрузкой открытой страницы, и работа не должна теряться.
-// Пишется после каждой законченной правки, отмены, смены пресета или имени;
-// сбой записи приложение показывает баннером кита. Что хранилище вернуло —
-// чистится; мусор, чужая или более новая версия — пустой старт.
+// The model in the browser — the kit's record (`core/storage`): the model,
+// the open preset and the file's given name survive a reload. The PWA needs
+// it: a new version arrives by reloading the open page, and the work must
+// not be lost. Written after every finished edit, undo, change of preset or
+// name; a failed write is the kit's banner. What storage returns is
+// cleaned; garbage, another or a newer version — a fresh start.
 
 import type { PresetRef } from 'maker-kit/core/presets';
 import { isPresetRef, PRESET_NAME_CHARS } from 'maker-kit/core/presets';
@@ -11,14 +11,14 @@ import type { StoredRecord } from 'maker-kit/core/storage';
 import type { AppState } from './schema';
 import { cleanState } from './schema';
 
-/** Свой ключ на общем для всех приложений origin `<user>.github.io`. */
+/** A key of its own on the `<user>.github.io` origin every app shares. */
 export const PROJECT_KEY = 'mathsculpt_project';
 
 export interface StoredProject {
   state: AppState;
-  /** открытый пресет: имя на кнопке и ● после перезагрузки те же */
+  /** the open preset: the name on the button and ● stay the same after a reload */
   ref: PresetRef;
-  /** имя, данное файлу проекта */
+  /** the name given to the project file */
   name: string;
 }
 

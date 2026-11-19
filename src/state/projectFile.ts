@@ -1,8 +1,9 @@
-// Модель файлом — обёртка кита (`core/projectFile`): `{ app: 'mathsculpt',
-// version: 1, name, savedAt, state }`, JSON с отступами — лежит рядом с
-// STL, пересылается, открывается на другой машине. Файл приходит извне:
-// чтение не бросает, чужой или битый файл — отказ с причиной
-// (`kit.file.*`), а не дефолты поверх работы; состояние чистится.
+// The model as a file — the kit's wrapper (`core/projectFile`): `{ app:
+// 'mathsculpt', version: 1, name, savedAt, state }`, indented JSON — kept
+// next to the STL, mailed, opened on another machine. The file comes from
+// outside: reading never throws, a foreign or broken file is a refusal with
+// its reason (`kit.file.*`), never defaults over the work; the state is
+// cleaned.
 
 import type { DecodedProjectFile } from 'maker-kit/core/projectFile';
 import { decodeProjectFile, encodeProjectFile, projectFileName } from 'maker-kit/core/projectFile';
@@ -20,7 +21,7 @@ export function decodeProject(text: string): DecodedProjectFile<AppState> {
   return decodeProjectFile(text, { app: APP, version: VERSION, sanitize: cleanState });
 }
 
-/** `classic-vase.mathsculpt.json`: буквы любого письма; без имени — `model`. */
+/** `classic-vase.mathsculpt.json`: letters of any script; with no name — `model`. */
 export function projectFile(name: string): string {
   return projectFileName(name, 'mathsculpt.json', 'model');
 }

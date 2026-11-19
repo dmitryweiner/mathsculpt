@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// Панель на контролах кита: карточки, их строки и id (смоук и snap.mjs
-// ходят по ним), включение галочкой внутри карточки, карточки носителя по
-// профилю, маршруты модуляции и бейдж ∿.
+// The panel on the kit's controls: cards, their rows and ids (the smoke and
+// snap.mjs go by them), the switch inside a card, carrier cards by the
+// profile, modulation routes and the ∿ badge.
 import { renderPanel } from '../src/ui/panel';
 import type { PanelHandle } from '../src/ui/panel';
 import { defaultState } from '../src/state/schema';
@@ -60,8 +60,8 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('панель', () => {
-  it('ид строк как были: p_<карточка>_<параметр>; включение — p_<карточка>_on', () => {
+describe('the panel', () => {
+  it('row ids as before: p_<card>_<param>; the switch is p_<card>_on', () => {
     mount();
     expect(input('p_ripples_amp').type).toBe('range');
     expect(input('p_ripples_on').type).toBe('checkbox');
@@ -73,7 +73,7 @@ describe('панель', () => {
     expect(input('lfo0_rate').type).toBe('range');
   });
 
-  it('галочка в карточке — законченная правка и разворачивает карточку', () => {
+  it('the switch in a card is a finished edit and unfolds the card', () => {
     const h = mount();
     const box = input('p_twist_on');
     box.checked = true;
@@ -83,7 +83,7 @@ describe('панель', () => {
     expect(document.getElementById('card_twist')?.classList.contains('collapsed')).toBe(false);
   });
 
-  it('ползунок: кадры жеста — live, отпущенный — final', () => {
+  it('a slider: the frames of a gesture are live, the release final', () => {
     const h = mount();
     const amp = input('p_ripples_amp');
     amp.value = '0.05';
@@ -94,7 +94,7 @@ describe('панель', () => {
     expect(h.get().displace.ripples?.params.amp).toBe(0.05);
   });
 
-  it('видна только карточка выбранного носителя', () => {
+  it('only the chosen carrier card shows', () => {
     const h = mount();
     const hidden = (id: string): boolean => document.getElementById(`card_${id}`)?.hidden === true;
     expect([hidden('profileShape'), hidden('fourier'), hidden('torus')]).toEqual([false, true, true]);
@@ -104,7 +104,7 @@ describe('панель', () => {
     expect([hidden('profileShape'), hidden('fourier'), hidden('torus')]).toEqual([true, false, true]);
   });
 
-  it('маршрут: «+» добавляет, его строки и бейдж ∿ на цели, ✕ убирает', () => {
+  it('a route: + adds it, its rows and the ∿ badge on the target, ✕ removes it', () => {
     const h = mount();
     expect(document.querySelector('.mod-badge')).toBeNull();
     document.getElementById('addRouteBtn')?.click();
@@ -120,7 +120,7 @@ describe('панель', () => {
     expect(document.querySelector('.mod-badge')).toBeNull();
   });
 
-  it('после смены языка панель рисуется заново на нём: карточки не двоятся, свёрнутые остаются свёрнутыми', () => {
+  it('after a language switch the panel is drawn again in it: no duplicate cards, folded ones stay folded', () => {
     const h = mount();
     const hosts = ['shapeControls', 'carrierCards', 'displaceCards', 'deformCards', 'modCard'].map((id) => document.getElementById(id));
     const [shape, carriers, displace, deform, mod] = hosts;
