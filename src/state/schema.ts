@@ -13,7 +13,7 @@ import { isDeformId } from '../geo/deform';
 import { isProfileId, FOURIER_PROFILE_ID } from '../geo/profiles';
 import { isShapeId } from '../geo/shapes';
 import type { BuildParams, CardState } from '../geo/build';
-import { defaultParams } from '../geo/build';
+import { defaultParams, isRevolveProfile, radiusFnFor } from '../geo/build';
 import type { ModState, SpatialLfoDef, ModRoute } from '../geo/mod';
 import { LFO_COUNT, isLfoShape, isLfoSource, findModTarget, defaultLfo } from '../geo/mod';
 import { DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, PROFILE_SHAPE_CARD, SHAPE_CARDS, clampCardParam } from '../formulas';
@@ -33,10 +33,10 @@ export interface AppState {
   wallMm: number;
   displace: Record<string, CardSnapshot>;
   deform: Record<string, CardSnapshot>;
-  fourier?: Params;
-  profileShape?: Params;
-  shapes?: Record<string, Params>;
-  mod?: ModState;
+  fourier: Params;
+  profileShape: Params;
+  shapes: Record<string, Params>;
+  mod: ModState;
 }
 
 export interface PartialCardSnapshot {
@@ -259,6 +259,22 @@ export function paramsToState(p: BuildParams, heightMm: number, wallMm: number):
     },
   };
   return state;
+}
+
+/**
+ * Параметры сборки из состояния (сетку nu×nv задаёт тот, кто строит).
+ * Ядро считает в относительных единицах, поэтому стенка из миллиметров
+ * переводится здесь: 1 ед. модели = heightMm/modelHeight мм, значит
+ * wall = wallMm · modelHeight / heightMm. Стенка — только у тела вращения
+ * с открытым верхом; иначе 0 (сплошная модель или оболочка).
+ */
+export function buildParamsOf(state: AppState): BuildParams {
+  const params = stateToParams(state);
+  if (params.caps === 'bottom' && state.wallMm > 0 && isRevolveProfile(params.profile)) {
+    const modelHeight = radiusFnFor(params)?.height ?? 1;
+    params.wall = (state.wallMm * modelHeight) / state.heightMm;
+  }
+  return params;
 }
 
 /** Полное состояние из частичного: дефолты под тем, что задано. */

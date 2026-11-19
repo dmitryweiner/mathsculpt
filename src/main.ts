@@ -1,46 +1,40 @@
-// Сборка UI: топбар (пресеты, Save, Share, Export), карточки смещений и
-// деформеров, Фурье-профиль, матрица модуляции, график r(z).
+// Сборка UI: топбар (пресеты, Save, Share, Export), панель на контролах
+// кита (строки «Shape», карточки носителя, смещений, деформеров, модуляции),
+// график r(z). Состояние одно и неизменяемое — то, что держит история кита:
+// правка панели — новое состояние, `final` делает её шагом отмены.
 // Превью 96×96 строится в главном потоке мгновенно; полная сетка — в
 // Web Worker с прогресс-баром (паттерн mandelbulb-worker).
+import 'maker-kit/styles/kit.css';
 import './style.css';
-import type { BuildParams } from './geo/build';
-import { buildMesh, defaultParams, radiusFnFor, isRevolveProfile } from './geo/build';
-import type { SurfaceMesh } from './geo/surface';
-import { PROFILES, isProfileId, FOURIER_PROFILE_ID } from './geo/profiles';
-import { SHAPE_IDS, isShapeId } from './geo/shapes';
-import { validateMesh, overhangFraction, assessExport } from './geo/validate';
-import type { MeshReport } from './geo/validate';
-import { encodeSTL } from './geo/stl';
-import { createScene } from './render/scene';
-import { DISPLACE_CARDS, DEFORM_CARDS, FOURIER_CARD, PROFILE_SHAPE_CARD, SHAPE_CARDS } from './formulas';
-import type { CardHandles } from './ui/cards';
-import { buildCard } from './ui/cards';
-import { setupAdjustmentButtons } from './ui/adjust';
-import { el } from './ui/dom';
-import { drawProfileGraph } from './ui/graph';
-import { buildModPanel, updateModBadges } from './ui/modmatrix';
 import { History } from 'maker-kit/core/history';
 import type { PresetRef } from 'maker-kit/core/presets';
 import { isPresetRef, nextPresetName, presetRef as makePresetRef } from 'maker-kit/core/presets';
 import { browserStorage, loadRecord, saveRecord } from 'maker-kit/core/storage';
-import { DEFAULT_HEIGHT_MM, DEFAULT_WALL_MM, completeState, defaultState, paramsToState, stateToParams } from './state/schema';
+import type { Control } from 'maker-kit/ui/controls';
+import { renderControls } from 'maker-kit/ui/controls';
+import { el } from 'maker-kit/ui/dom';
+import type { BuildParams } from './geo/build';
+import { buildMesh, radiusFnFor } from './geo/build';
+import type { SurfaceMesh } from './geo/surface';
+import { validateMesh, overhangFraction, assessExport } from './geo/validate';
+import type { MeshReport } from './geo/validate';
+import { encodeSTL } from './geo/stl';
+import { createScene } from './render/scene';
+import { drawProfileGraph } from './ui/graph';
+import { renderPanel } from './ui/panel';
+import { buildParamsOf, completeState, defaultState } from './state/schema';
 import type { AppState } from './state/schema';
 import { encodeStateToken, decodeStateToken, tokenFromHash } from './state/share';
 import { PRESETS, presetById } from './state/presets';
 import type { SculptPreset } from './state/userPresets';
 import { savePresetAs, userPresetsRecord } from './state/userPresets';
-import { autoPresetPrefixes, t, tDynamic } from './i18n';
+import type { Key } from './i18n';
+import { autoPresetPrefixes, t, tDynamic, tr } from './i18n';
 
 const PREVIEW_N = 96;
+const HISTORY_LIMIT = 100;
 
-const profileSel = el('profile', HTMLSelectElement);
-const capsSel = el('caps', HTMLSelectElement);
-const resolutionSel = el('resolution', HTMLSelectElement);
 const presetSel = el('presetSel', HTMLSelectElement);
-const heightMmInput = el('heightMm', HTMLInputElement);
-const wallRow = el('wallRow', HTMLLabelElement);
-const wallInput = el('wallMm', HTMLInputElement);
-const wallVal = el('wallVal', HTMLOutputElement);
 const saveBtn = el('saveBtn', HTMLButtonElement);
 const shareBtn = el('shareBtn', HTMLButtonElement);
 const undoBtn = el('undoBtn', HTMLButtonElement);
@@ -54,101 +48,77 @@ const progressWrap = el('progressWrap', HTMLDivElement);
 const progressFill = el('progressFill', HTMLDivElement);
 const progressLabel = el('progressLabel', HTMLSpanElement);
 
-// --- состояние ---
-let params: BuildParams = defaultParams();
+// --- состояние: share-ссылка или дефолты — начало истории, а не шаг ---
+const token = tokenFromHash(location.hash);
+const fromUrl = token ? decodeStateToken(token) : null;
+const history = new History<AppState>(fromUrl ? completeState(fromUrl) : defaultState(), HISTORY_LIMIT);
+/** параметры сборки показанного состояния (стенка уже в единицах модели) */
+let params: BuildParams = buildParamsOf(history.state);
 /** открытый пресет (`b:<id>`, `u:<id>`) или никакой */
 let presetRef: PresetRef = '';
-// толщина стенки задаётся в мм (UI), в build уходит относительной величиной
-let wallMm = DEFAULT_WALL_MM;
+/** JSON показанного состояния: законченная правка того же, что уже показано кадрами, не пересобирает */
+let shown = '';
 
-// --- шапка: профиль ---
-for (const p of PROFILES) {
-  const opt = document.createElement('option');
-  opt.value = p.id;
-  opt.textContent = p.label;
-  profileSel.appendChild(opt);
-}
-{
-  const opt = document.createElement('option');
-  opt.value = FOURIER_PROFILE_ID;
-  opt.textContent = 'Fourier (formula)';
-  profileSel.appendChild(opt);
-}
-const SHAPE_LABELS: Record<string, string> = {
-  sphere: 'Sphere',
-  torus: 'Torus',
-  superellipsoid: 'Superellipsoid',
-  supershape: 'Supershape',
-};
-for (const id of SHAPE_IDS) {
-  const opt = document.createElement('option');
-  opt.value = id;
-  opt.textContent = SHAPE_LABELS[id];
-  profileSel.appendChild(opt);
+/** Правка: кадр жеста (`live`) или законченная — шаг отмены (`commit`). */
+function edit(next: AppState, final: boolean): void {
+  if (final) history.commit(next);
+  else history.live(next);
+  show();
 }
 
-// --- карточки ---
-const cardHandles: CardHandles[] = [];
-const displaceWrap = el('displaceCards', HTMLDivElement);
-const deformWrap = el('deformCards', HTMLDivElement);
-const fourierWrap = el('fourierWrap', HTMLDivElement);
-const modWrap = el('modWrap', HTMLDivElement);
-setupAdjustmentButtons(el('panel', HTMLElement));
-
-/** Пересоздаёт привязку карточек и панели модуляции к текущему params. */
-function rebuildCards(): void {
-  cardHandles.length = 0;
-  displaceWrap.innerHTML = '';
-  for (const def of DISPLACE_CARDS) {
-    const h = buildCard(def, params.displace[def.id], onParamChange);
-    cardHandles.push(h);
-    displaceWrap.appendChild(h.root);
-  }
-  deformWrap.innerHTML = '';
-  for (const def of DEFORM_CARDS) {
-    const h = buildCard(def, params.deform[def.id], onParamChange);
-    cardHandles.push(h);
-    deformWrap.appendChild(h.root);
-  }
-  fourierWrap.innerHTML = '';
-  const psh = buildCard(PROFILE_SHAPE_CARD, { on: true, params: params.profileShape }, onParamChange, { alwaysOn: true });
-  cardHandles.push(psh);
-  fourierWrap.appendChild(psh.root);
-  const fh = buildCard(FOURIER_CARD, { on: true, params: params.fourier }, onParamChange, { alwaysOn: true });
-  cardHandles.push(fh);
-  fourierWrap.appendChild(fh.root);
-  for (const def of SHAPE_CARDS) {
-    const sh = buildCard(def, { on: true, params: params.shapes[def.id] }, onParamChange, { alwaysOn: true });
-    cardHandles.push(sh);
-    fourierWrap.appendChild(sh.root);
-  }
-  modWrap.innerHTML = '';
-  modWrap.appendChild(buildModPanel(params.mod, onParamChange).root);
-  syncShapeCardVisibility();
-  updateModBadges(params.mod);
+/** Показывает состояние истории: панель, превью и полную сборку, кнопки отмены. */
+function show(): void {
+  const state = history.state;
+  panel.sync(state);
+  syncHistoryButtons();
+  const json = JSON.stringify(state);
+  if (json === shown) return;
+  shown = json;
+  params = buildParamsOf(state);
+  rebuildPreview();
+  scheduleFullBuild();
 }
 
-/** Видимость карточек носителя: показывается только карточка выбранного. */
-function syncShapeCardVisibility(): void {
-  fourierWrap.hidden = false;
-  const profileShapeCard = document.getElementById('card_profileShape');
-  // настройка формы — для пресет-профилей (ваза/амфора/…), не для Фурье/фигур
-  if (profileShapeCard) profileShapeCard.hidden = !isProfileId(params.profile);
-  const fourierCard = document.getElementById('card_fourier');
-  if (fourierCard) fourierCard.hidden = params.profile !== FOURIER_PROFILE_ID;
-  for (const def of SHAPE_CARDS) {
-    const cardEl = document.getElementById(`card_${def.id}`);
-    if (cardEl) cardEl.hidden = params.profile !== def.id;
-  }
+// --- детализация полной сборки: не модель, в историю и пресеты не идёт ---
+interface BuildSettings {
+  resolution: string;
 }
-
-// --- сворачиваемая секция Modulation ---
-const modToggle = el('modToggle', HTMLHeadingElement);
-const modCaret = el('modCaret', HTMLSpanElement);
-modToggle.addEventListener('click', () => {
-  modWrap.hidden = !modWrap.hidden;
-  modCaret.textContent = modWrap.hidden ? '▸' : '▾';
+let buildSettings: BuildSettings = { resolution: '256' };
+const RESOLUTION_ROWS: readonly Control<BuildSettings, Key>[] = [
+  {
+    kind: 'select',
+    key: 'resolution',
+    label: 'shape.resolution',
+    options: ['192', '256', '384', '512'].map((value) => ({ value, text: `${value} × ${value}` })),
+    get: (settings) => settings.resolution,
+    set: (settings, resolution) => ({ ...settings, resolution }),
+  },
+];
+renderControls(el('exportControls', HTMLDivElement), RESOLUTION_ROWS, {
+  read: () => buildSettings,
+  change: (next) => {
+    buildSettings = next;
+    scheduleFullBuild();
+  },
+  idPrefix: 'export',
+  t: tr,
 });
+
+function fullResolution(): number {
+  return Number.parseInt(buildSettings.resolution, 10) || 256;
+}
+
+// --- панель ---
+const panel = renderPanel(
+  {
+    shape: el('shapeControls', HTMLDivElement),
+    carriers: el('carrierCards', HTMLDivElement),
+    displace: el('displaceCards', HTMLDivElement),
+    deform: el('deformCards', HTMLDivElement),
+    mod: el('modCard', HTMLDivElement),
+  },
+  { read: () => history.state, change: edit, t: tr },
+);
 
 // --- пресеты: встроенные по id (`core/presets` кита), свои — запись кита ---
 const storage = browserStorage();
@@ -196,33 +166,22 @@ function refreshPresetList(): void {
   presetSel.value = '';
 }
 
-/** Показывает состояние целиком: параметры, высоту, стенку, карточки. */
-function showState(state: AppState): void {
-  params = stateToParams(state);
-  heightMmInput.value = String(state.heightMm);
-  wallMm = state.wallMm;
-  wallInput.value = String(wallMm);
-  profileSel.value = params.profile;
-  capsSel.value = params.caps;
-  rebuildCards();
-  onParamChange();
-  refreshPresetList();
-}
-
-presetSel.addEventListener('input', () => {
+// открыть пресет — один шаг отмены
+presetSel.addEventListener('change', () => {
   const ref = presetSel.value;
   if (!isPresetRef(ref)) return;
   const id = ref.slice(2);
   const state = ref.startsWith('b:') ? presetById(id)?.build() : userPresets.find((preset) => preset.id === id)?.state;
   if (!state) return;
   presetRef = ref;
-  showState(state);
+  edit(state, true);
+  refreshPresetList();
 });
 
 saveBtn.addEventListener('click', () => {
   const name = window.prompt(t('presets.prompt'), currentName() || nextPresetName(userPresets, autoPresetPrefixes(), t('presets.auto')));
   if (!name) return;
-  const saved = savePresetAs(userPresets, name, historySnapshot());
+  const saved = savePresetAs(userPresets, name, history.state);
   userPresets = saved.list;
   presetRef = makePresetRef('u', saved.id);
   // пресет остаётся в списке до перезагрузки, даже если браузер его не сохранил
@@ -232,7 +191,7 @@ saveBtn.addEventListener('click', () => {
 });
 
 shareBtn.addEventListener('click', () => {
-  const token = encodeStateToken(historySnapshot());
+  const token = encodeStateToken(history.state);
   const url = `${location.origin}${location.pathname}#s=${token}`;
   window.history.replaceState(null, '', `#s=${token}`);
   navigator.clipboard?.writeText(url).then(
@@ -249,74 +208,18 @@ function flash(btn: HTMLButtonElement, text: string): void {
   }, 1200);
 }
 
-// --- сборка: превью в главном потоке + полная сетка в worker ---
-const scene = createScene(canvas);
-let worker: Worker | null = null;
-let fullTimer: ReturnType<typeof setTimeout> | null = null;
-let lastFullMesh: SurfaceMesh | null = null;
-let fullDirty = true;
-
-// --- история: китовая (`core/history`) ---
-// Правки идут в неё кадрами (`live`), а шагом (`commit`) становятся, когда
-// стихнут на 300 мс: так пачка движений ползунка — один шаг. Таймер уйдёт,
-// когда контролы кита скажут о конце правки сами (`final`, m5-controls).
-const HISTORY_LIMIT = 100;
-const HISTORY_COALESCE_MS = 300;
-const history = new History<AppState>(defaultState(), HISTORY_LIMIT);
-let historyTimer: ReturnType<typeof setTimeout> | null = null;
-/** состояние показывается из истории (отмена, старт): это не правка */
-let restoringHistory = false;
-
-function readHeightMm(): number {
-  return Math.min(400, Math.max(5, Number(heightMmInput.value) || DEFAULT_HEIGHT_MM));
-}
-
-function historySnapshot(): AppState {
-  return paramsToState(params, readHeightMm(), wallMm);
-}
-
+// --- отмена: история кита; шаг — законченная правка ---
 function syncHistoryButtons(): void {
-  undoBtn.disabled = !history.canUndo && historyTimer === null;
+  undoBtn.disabled = !history.canUndo;
   redoBtn.disabled = !history.canRedo;
 }
 
-/** Ждущая правка становится шагом. */
-function flushHistory(): void {
-  if (historyTimer !== null) {
-    clearTimeout(historyTimer);
-    historyTimer = null;
-    history.commit(history.state);
-  }
-  syncHistoryButtons();
-}
-
-function recordHistory(): void {
-  if (restoringHistory) return;
-  const next = historySnapshot();
-  if (JSON.stringify(next) === JSON.stringify(history.state)) return;
-  history.live(next);
-  if (historyTimer !== null) clearTimeout(historyTimer);
-  historyTimer = setTimeout(flushHistory, HISTORY_COALESCE_MS);
-  syncHistoryButtons();
-}
-
-function restoreHistory(state: AppState): void {
-  restoringHistory = true;
-  showState(state);
-  restoringHistory = false;
-  syncHistoryButtons();
-}
-
 function undo(): void {
-  flushHistory();
-  const previous = history.undo();
-  if (previous) restoreHistory(previous);
+  if (history.undo()) show();
 }
 
 function redo(): void {
-  flushHistory();
-  const next = history.redo();
-  if (next) restoreHistory(next);
+  if (history.redo()) show();
 }
 
 undoBtn.addEventListener('click', undo);
@@ -336,21 +239,12 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
-/**
- * Относительная толщина стенки для build: мм → единицы модели. 1 ед. модели =
- * heightMm/modelHeight мм, поэтому wall_rel = wallMm · modelHeight / heightMm.
- * Только для тел вращения в режиме open top; иначе 0 (сплошная модель).
- */
-function relativeWall(): number {
-  if (params.caps !== 'bottom' || wallMm <= 0 || !isRevolveProfile(params.profile)) return 0;
-  const prof = radiusFnFor(params);
-  const modelHeight = prof ? prof.height : 1;
-  return (wallMm * modelHeight) / readHeightMm();
-}
-
-function fullResolution(): number {
-  return Number.parseInt(resolutionSel.value, 10) || 256;
-}
+// --- сборка: превью в главном потоке + полная сетка в worker ---
+const scene = createScene(canvas);
+let worker: Worker | null = null;
+let fullTimer: ReturnType<typeof setTimeout> | null = null;
+let lastFullMesh: SurfaceMesh | null = null;
+let fullDirty = true;
 
 function setProgress(visible: boolean, t = 0, phase = ''): void {
   progressWrap.hidden = !visible;
@@ -378,7 +272,7 @@ function showReport(report: MeshReport, overhang: number, buildMs: number, full:
   const hollow = params.caps === 'bottom' && params.wall > 0;
   const shouldClose = params.caps === 'both' || hollow;
   const closed = shouldClose ? (report.watertight ? 'watertight ✓' : 'NOT watertight ✗') : 'open top (zero-wall shell)';
-  const tag = full ? `full ${resolutionSel.value}×${resolutionSel.value}` : 'preview';
+  const tag = full ? `full ${buildSettings.resolution}×${buildSettings.resolution}` : 'preview';
   status.textContent = `${kTris}k triangles · ${closed} · ${tag} · ${buildMs.toFixed(0)} ms`;
   const out: string[] = [];
   if (!report.finite) out.push('⚠ Non-finite vertices — check parameters');
@@ -470,41 +364,6 @@ function rebuildPreview(): void {
   if (prof) drawProfileGraph(graphCanvas, prof.radiusFn, prof.height);
 }
 
-// Слайдер стенки виден только для полого сосуда (open top + тело вращения).
-function syncWallRow(): void {
-  wallRow.hidden = !(params.caps === 'bottom' && isRevolveProfile(params.profile));
-  wallVal.value = String(wallMm);
-}
-
-function onParamChange(): void {
-  syncShapeCardVisibility();
-  syncWallRow();
-  params.wall = relativeWall();
-  updateModBadges(params.mod);
-  rebuildPreview();
-  scheduleFullBuild();
-  recordHistory();
-}
-
-profileSel.addEventListener('input', () => {
-  const v = profileSel.value;
-  if (isProfileId(v) || v === FOURIER_PROFILE_ID || isShapeId(v)) params.profile = v;
-  onParamChange();
-});
-capsSel.addEventListener('input', () => {
-  params.caps = capsSel.value === 'bottom' ? 'bottom' : 'both';
-  onParamChange();
-});
-wallInput.addEventListener('input', () => {
-  wallMm = Number(wallInput.value);
-  onParamChange();
-});
-// высота в мм влияет на относительную толщину стенки — пересобрать
-heightMmInput.addEventListener('input', () => {
-  onParamChange();
-});
-resolutionSel.addEventListener('input', scheduleFullBuild);
-
 // --- экспорт ---
 exportBtn.addEventListener('click', () => {
   const mesh = fullDirty || !lastFullMesh ? buildMesh({ ...params, nu: fullResolution(), nv: fullResolution() }) : lastFullMesh;
@@ -518,7 +377,7 @@ exportBtn.addEventListener('click', () => {
   if (assessment.warnings.length > 0 && !window.confirm(`The mesh has warnings:\n\n${assessment.warnings.join('\n')}\n\nExport anyway?`))
     return;
   const zExtent = report.bbox.max[2] - report.bbox.min[2];
-  const targetMm = readHeightMm();
+  const targetMm = history.state.heightMm;
   const name = currentName() || params.profile;
   const buf = encodeSTL(mesh, { scale: targetMm / zExtent, name });
   const blob = new Blob([buf], { type: 'model/stl' });
@@ -529,9 +388,6 @@ exportBtn.addEventListener('click', () => {
   URL.revokeObjectURL(a.href);
 });
 
-// --- старт: share-ссылка или дефолты; это начало истории, а не шаг ---
-const token = tokenFromHash(location.hash);
-const fromUrl = token ? decodeStateToken(token) : null;
-restoreHistory(fromUrl ? completeState(fromUrl) : defaultState());
-history.reset(historySnapshot());
-syncHistoryButtons();
+// --- старт ---
+refreshPresetList();
+show();
