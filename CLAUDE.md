@@ -100,8 +100,9 @@ All of them are on maker-kit's harness (`scripts/lib/harness.mjs`):
   `p_<card>_<key>`; `lfo<i>_<key>`, `route<i>_<key>`.
 - `scripts/smoke.mjs` — the browser smoke in the kit's steps, each on a fresh
   page: every profile, card and preset (through the kit's dialog) builds
-  watertight; undo/redo; 📄 New and its undo; 💾 + reload; the project file
-  (⬇️, 📂 back, a foreign file refused); open top and the wall; the worker's
+  watertight; undo/redo; 📄 New and its undo; 💾 + reload; the model kept
+  over a reload; blocked storage's banner; the project file (⬇️, 📂 back, a
+  foreign file refused); open top and the wall; the worker's
   full build; profile-shape and Fourier cards; a modulation route and ∿; a
   real STL download, its height in mm; languages (ru-RU browser, 🌐, Hebrew
   mirrored, the choice kept); no sideways scroll; the phone sheet.
@@ -151,6 +152,9 @@ All of them are on maker-kit's harness (`scripts/lib/harness.mjs`):
   properties only. A language switch redraws the panel and every text
   without rebuilding the model.
 - Storage keys are unique per app on the shared `github.io` origin:
+  `mathsculpt_project` (the kit's record: the model, the open preset and
+  the file's given name; written after every finished edit, undo, preset or
+  name change, opened at start; a failed write is the kit's banner),
   `mathsculpt_user_presets_v1` (the kit's record, version 1; the bare list of
   old is read as version 0), `mathsculpt_lang`.
 
@@ -160,8 +164,8 @@ Measured on an M-series Mac, 2026-11-19.
 
 | What | Cost |
 |---|---|
-| `npm run check` | ~3 s (443 tests) |
-| `npm run smoke` / `-- --preview` | ~45 s (15 steps; the preview builds first) |
+| `npm run check` | ~3 s (447 tests) |
+| `npm run smoke` / `-- --preview` | ~45 s (17 steps; the preview builds first) |
 | Preview 96×96 on the main thread | ≤ 25 ms (worst preset, Voronoi stone) |
 | Full build in the worker (from the job's arrival, with the checks) | 170 ms at 256², 712 ms at 512² (Voronoi stone); ~80 ms at 256² for the default vase |
 | Main chunk | ~655 KB (~173 KB gzip): three is most of it; the worker 44 KB |

@@ -93,9 +93,13 @@ The messages under the button say what is wrong with the mesh:
 The presets button opens the dialog: your presets first (rename one in its
 field, ↗ to open it, the bin and then **Delete?** to remove it), then the
 built-in ones. 💾 saves the model under a name; a name you already have
-replaces that preset. Presets are kept in this browser; if the browser
-refuses to keep them (a private window, full storage) a banner under the
-top bar says so.
+replaces that preset.
+
+The model itself — with the open preset and the name you gave its file —
+is kept in this browser after every edit: closing the tab or reloading the
+page brings it back as it was. Presets are kept in the browser too. If the
+browser refuses to keep them (a private window, full storage) a banner
+under the top bar says so; save the model to a file with ⬇️ then.
 
 Every finished edit — a released slider, a chosen option, a ticked box,
 a preset opened — is one undo step: ↶ ↷, or Ctrl/⌘+Z and Ctrl/⌘+Shift+Z
