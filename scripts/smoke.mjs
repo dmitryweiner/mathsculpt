@@ -5,7 +5,7 @@
 //
 //   node scripts/smoke.mjs                    # полный смоук
 //   node scripts/smoke.mjs --screenshot shots/x.png
-//   node scripts/smoke.mjs --preview          # прод-сборка (vite preview :4173)
+//   node scripts/smoke.mjs --preview          # прод-сборка (vite preview :4287)
 //
 // Любая ошибка консоли/страницы → ненулевой код выхода (годится для CI).
 
@@ -26,7 +26,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const preview = flags.has('preview');
-const PORT = preview ? 4173 : 5173;
+const PORT = preview ? 4287 : 5287;
 const BASE = `http://localhost:${PORT}`;
 
 async function serverUp() {

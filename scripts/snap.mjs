@@ -40,7 +40,7 @@ if (!out) {
   process.exit(1);
 }
 
-const PORT = 5173;
+const PORT = 5287;
 const BASE = `http://localhost:${PORT}`;
 
 async function serverUp() {
