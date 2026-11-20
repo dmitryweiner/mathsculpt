@@ -1,7 +1,7 @@
 // The entry point: state → geometry core → view and panel.
 //
 // The layout and the frame are the kit's: the top bar (the project's name
-// opens the presets dialog, 💾, ↶ ↷), the panel beside the view or a bottom
+// opens the presets dialog, 💾, ↩ ↪), the panel beside the view or a bottom
 // sheet on a phone, the progress bar over the view, the storage banner, the
 // message list in the export card. The state is one and immutable — what
 // the kit's history holds: an edit in the panel is a new state, and `final`
@@ -173,7 +173,7 @@ setupSheet({
   onInset: (px) => scene?.setInset(px),
 });
 
-// --- undo: ↶ ↷ and Ctrl/⌘+Z on any keyboard layout (the kit's) ---
+// --- undo: ↩ ↪ and Ctrl/⌘+Z on any keyboard layout (the kit's) ---
 const historyKeys = bindHistory({
   undo: undoBtn,
   redo: redoBtn,
