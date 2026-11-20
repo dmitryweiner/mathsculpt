@@ -13,9 +13,9 @@ zoom; the grid under it is a 200 × 200 mm printer bed with 1 cm cells.
 
 The top bar holds the presets button (it shows the open preset's name, with
 ● once you have changed the model), 📄 to start a new model from the
-defaults (one undo step: ↶ brings the previous one back), 💾 to save the
+defaults (one undo step: ↩ brings the previous one back), 💾 to save the
 model as a preset of yours, 📂 and ⬇️ to open and save the model as a file,
-↶ ↷ to undo and redo, and 🌐 for the language.
+↩ ↪ to undo and redo, and 🌐 for the language.
 
 ## The panel, top to bottom
 
@@ -102,7 +102,7 @@ browser refuses to keep them (a private window, full storage) a banner
 under the top bar says so; save the model to a file with ⬇️ then.
 
 Every finished edit — a released slider, a chosen option, a ticked box,
-a preset opened — is one undo step: ↶ ↷, or Ctrl/⌘+Z and Ctrl/⌘+Shift+Z
+a preset opened — is one undo step: ↩ ↪, or Ctrl/⌘+Z and Ctrl/⌘+Shift+Z
 (Ctrl+Y) on any keyboard layout.
 
 ## The model as a file

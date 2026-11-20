@@ -43,7 +43,7 @@ displacements over a base surface and prints the result.
   self-intersections.
 - **Presets**: 20 built-in ones and your own (💾), renamed and deleted in the
   presets dialog, kept in the browser.
-- **Undo and redo**: every finished edit is one step; ↶ ↷, Ctrl/⌘+Z on any
+- **Undo and redo**: every finished edit is one step; ↩ ↪, Ctrl/⌘+Z on any
   keyboard layout.
 - **English, Russian, Ukrainian and Hebrew** (the page mirrors right to left);
   the browser's language by default, 🌐 to switch.

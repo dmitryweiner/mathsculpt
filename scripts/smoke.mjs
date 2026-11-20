@@ -145,7 +145,7 @@ await app.run(
       check(await page.locator('#redoBtn').isDisabled(), 'redo is still enabled at the newest step');
     });
 
-    // 📄 New: the default model named "New model"; ↶ brings the previous one back
+    // 📄 New: the default model named "New model"; ↩ brings the previous one back
     await step('📄 New opens the default model, one undo step', async (page) => {
       await page.locator('#presetBtn').click();
       await page.locator('#presetList .preset-row[data-ref="b:gyroid-sphere"] .preset-pick').click();
